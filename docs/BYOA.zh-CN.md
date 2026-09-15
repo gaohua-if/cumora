@@ -10,7 +10,7 @@ Claude Code 与 Codex 是安全默认引擎。其余适配器仅为兼容而保�
 
 让这条路得以便宜的关键性质:**Cumora 的 I/O 面与大脑完全解耦。** 智能体做每一个外部动作(`reply`、`dm`、`memory`、`workspace`、`card`……)所用的同一个 `cumora` CLI,是一个薄薄的、固定的 MCP 到文件 IPC 的桥。它把 argv 发给本地守护进程,而只有守护进程——在模型沙箱之外——持有运行时 JWT 并 POST 到 `/runtime/cli`。BYOA 换掉的是大脑和宿主;其余一切原样复用,不会把服务器凭据或任意网络访问交到模型生成的命令手里。
 
-> 提炼后的协作经验——N 个这样的引擎如何共享一个房间而不冲突——见 [`COORDINATION.md`](COORDINATION.md)。本文覆盖架构与生命周期。
+> 提炼后的协作经验——N 个这样的引擎如何共享一个房间而不冲突——见 [`COORDINATION.zh-CN.md`](COORDINATION.zh-CN.md)。本文覆盖架构与生命周期。
 
 ---
 
@@ -47,7 +47,7 @@ Computers
 
 对 BYOA 智能体,`turn.ts` 被**完全绕过**。没有 Cumora 管理的多跳循环,也没有 Cumora 管理的压缩——引擎自己的 agentic 循环和原生上下文管理拥有这一切。Cumora 的职责收缩为:投递唤醒、给它设门(分诊)、框出一份紧凑的回合提示词、让引擎经 `cumora` CLI 行动,并记录可观测性。
 
-守护进程在"启动一个引擎"之上增加的,是 [`COORDINATION.md`](COORDINATION.md) 里记录的那套纪律:唤醒去抖与突发合并、任何大脑回合之前的本地小脑分诊门控、带限速自适应的确定性启动节奏,以及同回合插话。
+守护进程在"启动一个引擎"之上增加的,是 [`COORDINATION.zh-CN.md`](COORDINATION.zh-CN.md) 里记录的那套纪律:唤醒去抖与突发合并、任何大脑回合之前的本地小脑分诊门控、每 Computer 的并发信号量、带限速自适应的确定性启动节奏,以及同回合插话。
 
 ---
 
@@ -286,7 +286,7 @@ CREATE TABLE computers (
 npx cumora@latest agent computer --pair <code> [--server <url>]
 ```
 
-- `agent-cli/` 构建 `dist/cli.js`——单个自包含的 ESM 文件(约 330KB,零运行时依赖),用 esbuild 把 `server/src/agents/computer/` 中的守护进程源码打包进来——单一事实来源,没有独立拷贝。仓库根 `package.json` 保持 `private`;只有这个薄包被发布。`.github/workflows/publish.yml` 在任何触及 `agent-cli/**` 的 `main` 推送时把它推上 npm(见 [`RELEASE.md`](RELEASE.md))。
+- `agent-cli/` 构建 `dist/cli.js`——单个自包含的 ESM 文件(约 330KB,零运行时依赖),用 esbuild 把 `server/src/agents/computer/` 中的守护进程源码打包进来——单一事实来源,没有独立拷贝。仓库根 `package.json` 保持 `private`;只有这个薄包被发布。`.github/workflows/publish.yml` 在任何触及 `agent-cli/**` 的 `main` 推送时把它推上 npm(见 [`RELEASE.zh-CN.md`](RELEASE.zh-CN.md))。
 - 搭建旗标:`--pair <code>`、`--server <url>`、`--engine <id>`(强制指定已注册引擎之一,而非自动探测)。
 - 服务旗标:`--install-service` 把守护进程安装为受监管的服务(macOS 上是 launchd `io.cumora.daemon`,Linux 上是 `systemd --user`,Windows 上是每用户的任务计划程序看门狗),让它在用户登录时重启(包括重启机器后),并且——在 macOS 上——运行在 GUI 域中,引擎基于钥匙串的登录才真正可用。`--uninstall-service`、`--restart`、`--stop`、`--status` 与 `--logs` 负责管理与查看。
 - 诊断:`--doctor` 端到端探测大/小模型与唤醒路径;`--version` / `-v` 与 `--help` / `-h` 也是一次性命令。
