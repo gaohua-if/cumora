@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 570" role="img" aria-labelledby="title description">
+  <title id="title">托管智能体与 BYOA 智能体的运行路径</title>
+  <desc id="description">消息经调度器和 Redis wake bus 唤醒运行时。托管智能体由 Cloud Pod 读取收件箱并通过 turn.ts 和 OpenAI 推理；BYOA 智能体由本地守护进程读取收件箱、分诊并驱动本地引擎。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+    </marker>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #172033; }
+      .lane { fill: #ffffff; stroke: #d7e0eb; stroke-width: 1.5; }
+      .cloud { fill: #e8f1ff; stroke: #86aef2; }
+      .local { fill: #e8f7f1; stroke: #77bf9b; }
+      .common { fill: #f2f5f9; stroke: #c8d2df; }
+      .node { stroke-width: 1.5; rx: 10; }
+      .heading { font-size: 22px; font-weight: 700; }
+      .subtitle { font-size: 13px; fill: #526174; }
+      .label { font-size: 16px; font-weight: 600; text-anchor: middle; }
+      .detail { font-size: 12px; fill: #526174; text-anchor: middle; }
+      .note { font-size: 13px; fill: #526174; }
+      .flow { fill: none; stroke: #64748b; stroke-width: 2; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1100" height="570" fill="#f8fafc"/>
+
+  <rect class="lane" x="20" y="18" width="1060" height="256" rx="16"/>
+  <text class="heading" x="42" y="53">Cumora Cloud（托管）</text>
+  <text class="subtitle" x="350" y="53">服务器推理；每个智能体由独立 Pod 承载执行环境</text>
+  <g class="node common"><rect x="40" y="78" width="160" height="64"/><rect x="250" y="78" width="160" height="64"/><rect x="460" y="78" width="160" height="64"/></g>
+  <g class="node cloud"><rect x="670" y="78" width="160" height="64"/><rect x="880" y="78" width="160" height="64"/></g>
+  <text class="label" x="120" y="106">消息提交</text><text class="detail" x="120" y="126">msg.new</text>
+  <text class="label" x="330" y="115">调度器</text>
+  <text class="label" x="540" y="106">Redis wake bus</text><text class="detail" x="540" y="126">按 agentId 发布</text>
+  <text class="label" x="750" y="104">在线：SSE</text><text class="detail" x="750" y="126">离线：ensurePod</text>
+  <text class="label" x="960" y="115">Cloud Pod</text>
+  <path class="flow" d="M 200 110 H 245"/><path class="flow" d="M 410 110 H 455"/><path class="flow" d="M 620 110 H 665"/><path class="flow" d="M 830 110 H 875"/>
+
+  <g class="node common"><rect x="40" y="174" width="160" height="62"/><rect x="250" y="174" width="160" height="62"/><rect x="460" y="174" width="160" height="62"/></g>
+  <g class="node cloud"><rect x="670" y="174" width="160" height="62"/><rect x="880" y="174" width="160" height="62"/></g>
+  <text class="label" x="120" y="201">/runtime/cli</text><text class="detail" x="120" y="221">持久化至 DB</text>
+  <text class="label" x="330" y="211">cumora shim</text>
+  <text class="label" x="540" y="201">OpenAI</text><text class="detail" x="540" y="221">Responses API</text>
+  <text class="label" x="750" y="201">turn.ts</text><text class="detail" x="750" y="221">多跳循环</text>
+  <text class="label" x="960" y="211">/runtime/inbox</text>
+  <path class="flow" d="M 960 142 V 169"/><path class="flow" d="M 880 205 H 835"/><path class="flow" d="M 670 205 H 625"/><path class="flow" d="M 460 205 H 415"/><path class="flow" d="M 250 205 H 205"/>
+  <text class="note" x="42" y="257">Pod 首次接入时主动补读收件箱；已有 Pod 由 SSE 直接唤醒。</text>
+
+  <rect class="lane" x="20" y="294" width="1060" height="256" rx="16"/>
+  <text class="heading" x="42" y="329">BYOA（用户自带）</text>
+  <text class="subtitle" x="285" y="329">用户机器运行守护进程与推理引擎；服务器不持有模型凭据</text>
+  <g class="node common"><rect x="40" y="354" width="160" height="64"/><rect x="250" y="354" width="160" height="64"/><rect x="460" y="354" width="160" height="64"/></g>
+  <g class="node local"><rect x="670" y="354" width="160" height="64"/><rect x="880" y="354" width="160" height="64"/></g>
+  <text class="label" x="120" y="382">消息提交</text><text class="detail" x="120" y="402">msg.new</text>
+  <text class="label" x="330" y="391">调度器</text>
+  <text class="label" x="540" y="382">Redis wake bus</text><text class="detail" x="540" y="402">不创建 Pod</text>
+  <text class="label" x="750" y="391">SSE 唤醒</text>
+  <text class="label" x="960" y="382">本地守护进程</text><text class="detail" x="960" y="402">每智能体一条流</text>
+  <path class="flow" d="M 200 386 H 245"/><path class="flow" d="M 410 386 H 455"/><path class="flow" d="M 620 386 H 665"/><path class="flow" d="M 830 386 H 875"/>
+
+  <g class="node common"><rect x="40" y="450" width="160" height="62"/><rect x="250" y="450" width="160" height="62"/></g>
+  <g class="node local"><rect x="460" y="450" width="160" height="62"/><rect x="670" y="450" width="160" height="62"/><rect x="880" y="450" width="160" height="62"/></g>
+  <text class="label" x="120" y="477">/runtime/cli</text><text class="detail" x="120" y="497">持久化至 DB</text>
+  <text class="label" x="330" y="487">本地文件 IPC</text>
+  <text class="label" x="540" y="477">本地引擎</text><text class="detail" x="540" y="497">自有会话与工具循环</text>
+  <text class="label" x="750" y="487">小脑分诊</text>
+  <text class="label" x="960" y="477">去抖与收件箱</text><text class="detail" x="960" y="497">2.5 秒合并</text>
+  <path class="flow" d="M 960 418 V 445"/><path class="flow" d="M 880 481 H 835"/><path class="flow" d="M 670 481 H 625"/><path class="flow" d="M 460 481 H 415"/><path class="flow" d="M 250 481 H 205"/>
+  <text class="note" x="42" y="536">断线时消息留在收件箱；守护进程重连补读，并每 20 秒轮询兜底。</text>
+</svg>
