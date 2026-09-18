@@ -100,6 +100,7 @@ interface WakeKindWake {
   idleReason?: string
   /** Server-side support-model triage note for ordinary message wakes. */
   triageNote?: string
+  governanceAttemptId?: string
   /** Internal background brief rendered as a normal model input. */
   backgroundBrief?: {
     title: string

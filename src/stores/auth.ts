@@ -21,6 +21,8 @@ export interface AuthUser {
   email: string
   name: string
   emailVerified?: boolean
+  /** Whether this account can also sign in with an email + password. */
+  hasPassword?: boolean
   /** OAuth providers linked to this account, e.g. ['google'] or
    *  ['google', 'github']. Populated by /auth/me. */
   providers?: string[]

@@ -49,14 +49,15 @@ export async function createAgentRun(args: {
   inputMessageIds?: string[]
   inboxCount?: number
   fingerprint?: string
+  governanceAttemptId?: string | null
 }, db: Queryable = pool): Promise<string> {
   const id = `run-${randomUUID()}`
   await db.query(
     `INSERT INTO agent_runs (
        id, agent_id, company_id, trigger, status, stage,
-       input_message_ids, inbox_count, fingerprint
+       input_message_ids, inbox_count, fingerprint, governance_attempt_id
      )
-     VALUES ($1,$2,$3,$4::jsonb,'running','created',$5::jsonb,$6,$7)`,
+     VALUES ($1,$2,$3,$4::jsonb,'running','created',$5::jsonb,$6,$7,$8)`,
     [
       id,
       args.agentId,
@@ -65,6 +66,7 @@ export async function createAgentRun(args: {
       jsonForDb(args.inputMessageIds ?? []),
       args.inboxCount ?? 0,
       args.fingerprint ?? null,
+      args.governanceAttemptId ?? null,
     ],
   )
   return id

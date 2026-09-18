@@ -59,6 +59,7 @@ server/uploads/
 
 # Local env / secrets
 .env
+.env.docker
 .env.local
 .env.*.local
 *.tsbuildinfo
@@ -70,3 +71,6 @@ vite.config.d.ts
 server/k8s/*.prod.yaml
 docs/HANDOFF.md
 android/app/google-services.json
+
+# local analysis tooling artifacts
+.ua/

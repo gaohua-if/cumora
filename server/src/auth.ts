@@ -1,7 +1,6 @@
 /**
- * Auth primitives — session tokens, gravatar, audit log, WS tickets,
- * Express middleware. Identity itself comes from OAuth (Google + GitHub)
- * — see oauth.ts. No native deps; everything is Node stdlib.
+ * Auth primitives — password hashing, session tokens, gravatar, audit log,
+ * WS tickets, Express middleware. No native deps; everything is Node stdlib.
  *
  * Threat model:
  *  - DB compromise: session/ws-ticket tokens are stored as sha256(token);
@@ -11,11 +10,48 @@
  *    prod is the deploy-side responsibility.
  *  - CSRF: tokens are sent via Authorization header (not cookies), so no
  *    cross-origin form auto-submit can carry them.
- *  - Identity binding: OAuth provider attests to email ownership; we never
- *    accept self-asserted passwords.
+ *  - Passwords: scrypt with a random per-password salt. The DB stores only
+ *    the self-describing hash string; comparison is constant-time.
  */
-import { randomBytes, createHash } from 'node:crypto'
+import { randomBytes, createHash, scrypt as nodeScrypt, timingSafeEqual } from 'node:crypto'
+import { promisify } from 'node:util'
 import { pool } from './db/pool.js'
+
+const scrypt = promisify(nodeScrypt)
+const PASSWORD_KEY_BYTES = 64
+const PASSWORD_MAX_BYTES = 1024
+const DUMMY_PASSWORD_SALT = Buffer.from('cumora-password-dummy-salt', 'utf8')
+
+/** Hash a password using Node's memory-hard scrypt implementation. */
+export async function hashPassword(password: string): Promise<string> {
+  if (Buffer.byteLength(password, 'utf8') > PASSWORD_MAX_BYTES) throw new Error('password is too long')
+  const salt = randomBytes(16)
+  const derived = await scrypt(password, salt, PASSWORD_KEY_BYTES) as Buffer
+  return `scrypt:${salt.toString('base64url')}:${derived.toString('base64url')}`
+}
+
+/** Verify a password. A missing/malformed hash still performs scrypt so an
+ * unknown email cannot be distinguished from a bad password by timing. */
+export async function verifyPassword(password: string, encoded: string | null | undefined): Promise<boolean> {
+  if (Buffer.byteLength(password, 'utf8') > PASSWORD_MAX_BYTES) return false
+  const parts = typeof encoded === 'string' ? encoded.split(':') : []
+  let salt = DUMMY_PASSWORD_SALT
+  let expected = Buffer.alloc(PASSWORD_KEY_BYTES)
+  let validEncoding = false
+  if (parts.length === 3 && parts[0] === 'scrypt') {
+    try {
+      const parsedSalt = Buffer.from(parts[1], 'base64url')
+      const parsedExpected = Buffer.from(parts[2], 'base64url')
+      if (parsedSalt.length >= 16 && parsedExpected.length === PASSWORD_KEY_BYTES) {
+        salt = parsedSalt
+        expected = parsedExpected
+        validEncoding = true
+      }
+    } catch { /* run the dummy comparison below */ }
+  }
+  const actual = await scrypt(password, salt, PASSWORD_KEY_BYTES) as Buffer
+  return validEncoding && timingSafeEqual(actual, expected)
+}
 
 /** Generate a fresh 256-bit URL-safe session token. */
 export function generateSessionToken(): string {
@@ -24,7 +60,7 @@ export function generateSessionToken(): string {
 
 /** Hash a token for at-rest storage. The DB only ever sees this digest;
  *  the raw token is what we hand back to the client. */
-function hashToken(token: string): string {
+export function hashSessionToken(token: string): string {
   return createHash('sha256').update(token).digest('base64url')
 }
 
@@ -56,7 +92,7 @@ export async function createSession(userId: string, opts: { ip?: string; ua?: st
   await pool.query(
     `INSERT INTO sessions (token_hash, user_id, expires_at, ip, user_agent)
      VALUES ($1, $2, $3, $4, $5)`,
-    [hashToken(token), userId, expiresAt, opts.ip ?? null, opts.ua ?? null],
+    [hashSessionToken(token), userId, expiresAt, opts.ip ?? null, opts.ua ?? null],
   )
   await pool.query(`UPDATE users SET last_login_at = NOW() WHERE id = $1`, [userId])
   return { token, expiresAt }
@@ -70,7 +106,7 @@ export async function createSession(userId: string, opts: { ip?: string; ua?: st
  *  the only correct place to put the check (per-route checks would leave
  *  WS / runtime / inbound-email paths open). */
 export async function resolveSession(token: string): Promise<{ userId: string } | null> {
-  const tokenHash = hashToken(token)
+  const tokenHash = hashSessionToken(token)
   const { rows } = await pool.query<{
     user_id: string; expires_at: string; last_used_at: string
     suspended_at: string | null; deleted_at: string | null
@@ -107,7 +143,7 @@ export async function resolveSession(token: string): Promise<{ userId: string } 
 }
 
 export async function deleteSession(token: string): Promise<void> {
-  await pool.query(`DELETE FROM sessions WHERE token_hash = $1`, [hashToken(token)])
+  await pool.query(`DELETE FROM sessions WHERE token_hash = $1`, [hashSessionToken(token)])
 }
 
 /* ============== Audit log ============== */
@@ -149,7 +185,7 @@ export async function createWsTicket(userId: string): Promise<{ ticket: string; 
   await pool.query(
     `INSERT INTO ws_tickets (token_hash, user_id, expires_at)
      VALUES ($1, $2, $3)`,
-    [hashToken(ticket), userId, expiresAt],
+    [hashSessionToken(ticket), userId, expiresAt],
   )
   return { ticket, expiresAt }
 }
@@ -157,7 +193,7 @@ export async function createWsTicket(userId: string): Promise<{ ticket: string; 
 /** Single-use consume — atomically marks the ticket used and returns userId.
  *  Refuses already-used, expired, or unknown tickets. */
 export async function consumeWsTicket(ticket: string): Promise<{ userId: string } | null> {
-  const hash = hashToken(ticket)
+  const hash = hashSessionToken(ticket)
   const upd = await pool.query<{ user_id: string }>(
     `UPDATE ws_tickets SET used_at = NOW()
        WHERE token_hash = $1

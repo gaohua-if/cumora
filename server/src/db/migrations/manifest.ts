@@ -47,12 +47,37 @@ export const SCHEMA_MIGRATIONS = [
     name: '0006_email_messages_company_smtp_id',
     checksum: 'a4a37d6d293f4b36eca5471f20ba3a6e5e40d8c15435133843ef9cb28a636331',
   },
+  {
+    version: 7,
+    name: '0007_organizational_governance',
+    checksum: '34a4e3c40b06d07265962337be98be9d9d2c9c289d78c32d9fc57e77ffc2637e',
+  },
+  {
+    version: 8,
+    name: '0008_governance_idempotency',
+    checksum: '7a40750c1859071285a64c663dad8197937818eee72160924f1998f1677c0c47',
+  },
+  {
+    version: 9,
+    name: '0009_governance_invariants',
+    checksum: 'a85d78aa39bd47d7e6072e3d65533ed8c23de88bce17421c315919b509eeb37a',
+  },
+  {
+    version: 10,
+    name: '0010_governance_budget_settlement',
+    checksum: '06c2814b248f53af314d26bd2275a1b39b4b46ffb269a5a6ba287d7b58c48a39',
+  },
+  {
+    version: 11,
+    name: '0011_governance_membership_history',
+    checksum: 'd60384f35e0f4205163ec04965c2fa411b37c8f378dcf8dc5c584a0cd23f92bc',
+  },
 ] as const satisfies readonly MigrationMetadata[]
 
 /** This build intentionally supports one exact schema range. Expand/contract
  * releases may widen the range, but both bounds must remain explicit. */
-export const MIN_SUPPORTED_SCHEMA_VERSION = 6
-export const MAX_SUPPORTED_SCHEMA_VERSION = 6
+export const MIN_SUPPORTED_SCHEMA_VERSION = 11
+export const MAX_SUPPORTED_SCHEMA_VERSION = 11
 
 function assertManifestShape(): void {
   for (let i = 0; i < SCHEMA_MIGRATIONS.length; i++) {

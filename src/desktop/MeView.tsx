@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { useParticipants } from '@/stores/participants'
 import { useComputers } from '@/stores/computers'
 import { usePrefs } from '@/stores/preferences'
@@ -99,6 +99,8 @@ function ProfileTab() {
         </div>
       </Section>
 
+      <PasswordSection initialHasPassword={!!authUser.hasPassword} />
+
       <Section title={t('me.sectionSession')}>
         <div className="bg-cloud rounded-[14px] p-5 flex items-center justify-between gap-4"
           style={{ border: '1px solid var(--ink-100)' }}>
@@ -122,6 +124,88 @@ function ProfileTab() {
 
       <AboutSection />
     </div>
+  )
+}
+
+function PasswordSection({ initialHasPassword }: { initialHasPassword: boolean }) {
+  const t = useT()
+  const [hasPassword, setHasPassword] = useState(initialHasPassword)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
+
+  async function savePassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setError(null); setSaved(false)
+    if (newPassword.length < 12) { setError(t('me.passwordTooShort')); return }
+    if (newPassword !== confirmPassword) { setError(t('me.passwordMismatch')); return }
+    setBusy(true)
+    try {
+      await api.setAccountPassword({ currentPassword: hasPassword ? currentPassword : undefined, newPassword })
+      setHasPassword(true)
+      setCurrentPassword(''); setNewPassword(''); setConfirmPassword('')
+      setSaved(true)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Section title={t('me.sectionPassword')}>
+      <form onSubmit={savePassword} className="bg-cloud rounded-[14px] p-5" style={{ border: '1px solid var(--ink-100)' }}>
+        <div className="font-display text-[14px] text-ink-800">
+          {hasPassword ? t('me.passwordChangeTitle') : t('me.passwordCreateTitle')}
+        </div>
+        <div className="font-display italic text-[12px] text-ink-400 mt-0.5 mb-4">
+          {hasPassword ? t('me.passwordChangeHint') : t('me.passwordCreateHint')}
+        </div>
+        <div className="grid gap-3 max-w-[440px]">
+          {hasPassword && (
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={currentPassword}
+              onChange={(event) => setCurrentPassword(event.target.value)}
+              placeholder={t('me.currentPassword')}
+              disabled={busy}
+              className="h-10 rounded-[8px] border border-ink-100 bg-paper px-3 text-[13px] outline-none focus:border-skype disabled:opacity-60"
+            />
+          )}
+          <input
+            type="password"
+            autoComplete="new-password"
+            value={newPassword}
+            onChange={(event) => setNewPassword(event.target.value)}
+            placeholder={t('me.newPassword')}
+            disabled={busy}
+            className="h-10 rounded-[8px] border border-ink-100 bg-paper px-3 text-[13px] outline-none focus:border-skype disabled:opacity-60"
+          />
+          <input
+            type="password"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            placeholder={t('me.confirmPassword')}
+            disabled={busy}
+            className="h-10 rounded-[8px] border border-ink-100 bg-paper px-3 text-[13px] outline-none focus:border-skype disabled:opacity-60"
+          />
+          {error && <div className="text-[12px] text-coral-deep">{error}</div>}
+          {saved && <div className="text-[12px] text-avail">{t('me.passwordSaved')}</div>}
+          <button
+            type="submit"
+            disabled={busy || !newPassword || !confirmPassword || (hasPassword && !currentPassword)}
+            className="h-9 px-4 rounded-[8px] bg-skype hover:bg-skype-deep text-white text-[13px] font-display transition-colors disabled:opacity-50 justify-self-start"
+          >
+            {busy ? t('me.passwordSaving') : hasPassword ? t('me.passwordChangeButton') : t('me.passwordCreateButton')}
+          </button>
+        </div>
+      </form>
+    </Section>
   )
 }
 

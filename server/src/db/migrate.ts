@@ -37,6 +37,26 @@ import {
   EMAIL_MESSAGES_COMPANY_SMTP_ID_SQL,
   emailMessagesCompanySmtpIdChecksum,
 } from './migrations/0006-email-messages-company-smtp-id.js'
+import {
+  ORGANIZATIONAL_GOVERNANCE_SQL,
+  organizationalGovernanceChecksum,
+} from './migrations/0007-organizational-governance.js'
+import {
+  GOVERNANCE_IDEMPOTENCY_SQL,
+  governanceIdempotencyChecksum,
+} from './migrations/0008-governance-idempotency.js'
+import {
+  GOVERNANCE_INVARIANTS_SQL,
+  governanceInvariantsChecksum,
+} from './migrations/0009-governance-invariants.js'
+import {
+  GOVERNANCE_BUDGET_SETTLEMENT_SQL,
+  governanceBudgetSettlementChecksum,
+} from './migrations/0010-governance-budget-settlement.js'
+import {
+  GOVERNANCE_MEMBERSHIP_HISTORY_SQL,
+  governanceMembershipHistoryChecksum,
+} from './migrations/0011-governance-membership-history.js'
 
 /** Frozen data backfill embedded in migration 0001. Exported so its behavior
  * can be exercised against PostgreSQL without replaying the whole migration. */
@@ -2542,6 +2562,26 @@ async function applyEmailMessagesCompanySmtpId(client: import('pg').PoolClient):
   await client.query(DROP_LEGACY_EMAIL_MESSAGES_SMTP_ID_SQL)
 }
 
+async function applyOrganizationalGovernance(client: import('pg').PoolClient): Promise<void> {
+  await client.query(ORGANIZATIONAL_GOVERNANCE_SQL)
+}
+
+async function applyGovernanceIdempotency(client: import('pg').PoolClient): Promise<void> {
+  await client.query(GOVERNANCE_IDEMPOTENCY_SQL)
+}
+
+async function applyGovernanceInvariants(client: import('pg').PoolClient): Promise<void> {
+  await client.query(GOVERNANCE_INVARIANTS_SQL)
+}
+
+async function applyGovernanceBudgetSettlement(client: import('pg').PoolClient): Promise<void> {
+  await client.query(GOVERNANCE_BUDGET_SETTLEMENT_SQL)
+}
+
+async function applyGovernanceMembershipHistory(client: import('pg').PoolClient): Promise<void> {
+  await client.query(GOVERNANCE_MEMBERSHIP_HISTORY_SQL)
+}
+
 const VERSIONED_MIGRATIONS: readonly VersionedMigration[] = [
   {
     ...SCHEMA_MIGRATIONS[0],
@@ -2580,6 +2620,36 @@ const VERSIONED_MIGRATIONS: readonly VersionedMigration[] = [
     // CREATE/DROP INDEX CONCURRENTLY cannot run inside a transaction block.
     transactional: false,
     up: applyEmailMessagesCompanySmtpId,
+  },
+  {
+    ...SCHEMA_MIGRATIONS[6],
+    sourceChecksum: organizationalGovernanceChecksum(),
+    transactional: true,
+    up: applyOrganizationalGovernance,
+  },
+  {
+    ...SCHEMA_MIGRATIONS[7],
+    sourceChecksum: governanceIdempotencyChecksum(),
+    transactional: true,
+    up: applyGovernanceIdempotency,
+  },
+  {
+    ...SCHEMA_MIGRATIONS[8],
+    sourceChecksum: governanceInvariantsChecksum(),
+    transactional: true,
+    up: applyGovernanceInvariants,
+  },
+  {
+    ...SCHEMA_MIGRATIONS[9],
+    sourceChecksum: governanceBudgetSettlementChecksum(),
+    transactional: true,
+    up: applyGovernanceBudgetSettlement,
+  },
+  {
+    ...SCHEMA_MIGRATIONS[10],
+    sourceChecksum: governanceMembershipHistoryChecksum(),
+    transactional: true,
+    up: applyGovernanceMembershipHistory,
   },
 ]
 

@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 510" role="img" aria-labelledby="title description">
+  <title id="title">一台 BYOA Computer 承载多个智能体</title>
+  <desc id="description">生产服务器向守护进程中的 Agent A 和 Agent B 分别提供带各自令牌的 SSE 唤醒流。守护进程合并唤醒、读取收件箱、分诊并驱动本地引擎；工具调用经本地文件 IPC 和守护进程转发到服务器运行时接口。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+    </marker>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #172033; }
+      .heading { font-size: 22px; font-weight: 700; }
+      .subtitle { font-size: 14px; fill: #526174; }
+      .box { fill: #ffffff; stroke: #c8d2df; stroke-width: 1.5; }
+      .agent { fill: #e8f7f1; stroke: #77bf9b; stroke-width: 1.5; }
+      .server { fill: #e8f1ff; stroke: #86aef2; stroke-width: 1.5; }
+      .step { fill: #f2f5f9; stroke: #c8d2df; stroke-width: 1.5; }
+      .label { font-size: 16px; font-weight: 600; }
+      .detail { font-size: 13px; fill: #526174; }
+      .flow { fill: none; stroke: #64748b; stroke-width: 2; marker-end: url(#arrow); }
+      .caption { font-size: 12px; fill: #526174; }
+    </style>
+  </defs>
+  <rect width="1080" height="510" fill="#f8fafc"/>
+  <text class="heading" x="34" y="46">BYOA：一台 Computer，多个独立智能体</text>
+  <text class="subtitle" x="34" y="72">每个智能体单独持有运行时连接与引擎上下文，守护进程统一管理凭据和工具转发。</text>
+
+  <rect class="server" x="34" y="105" width="278" height="330" rx="16"/>
+  <text class="label" x="58" y="143">Cumora 生产服务器</text>
+  <text class="detail" x="58" y="175">/runtime/wake-stream</text>
+  <text class="detail" x="58" y="202">/runtime/inbox</text>
+  <text class="detail" x="58" y="229">/runtime/cli</text>
+  <path d="M 58 252 H 286" stroke="#b5c8e4"/>
+  <text class="detail" x="58" y="281">Redis wake bus 按 agentId 分发</text>
+  <text class="detail" x="58" y="308">消息和收件箱持久化在 DB</text>
+
+  <rect class="box" x="372" y="105" width="674" height="330" rx="16"/>
+  <text class="label" x="397" y="143">cumora agent computer（笔记本 / VPS）</text>
+  <text class="detail" x="397" y="168">已配对设备；一个守护进程可承载 N 个智能体</text>
+
+  <rect class="agent" x="397" y="191" width="246" height="72" rx="10"/>
+  <text class="label" x="415" y="218">Agent A</text>
+  <text class="detail" x="415" y="242">token A · 独立 SSE 与会话</text>
+  <rect class="agent" x="397" y="281" width="246" height="72" rx="10"/>
+  <text class="label" x="415" y="308">Agent B</text>
+  <text class="detail" x="415" y="332">token B · 独立 SSE 与会话</text>
+
+  <path class="flow" d="M 312 214 H 392"/>
+  <path class="flow" d="M 312 303 H 392"/>
+  <text class="caption" x="320" y="200">SSE</text>
+  <text class="caption" x="320" y="290">SSE</text>
+
+  <rect class="step" x="702" y="191" width="310" height="162" rx="10"/>
+  <text class="label" x="721" y="219">每智能体的回合处理</text>
+  <text class="detail" x="721" y="245">唤醒合并 → 读取收件箱</text>
+  <text class="detail" x="721" y="273">小脑分诊 → 本地 EngineSession</text>
+  <text class="detail" x="721" y="301">Claude / Codex 等引擎自行循环</text>
+  <text class="detail" x="721" y="329">工具 → 文件 IPC → 守护进程</text>
+  <path class="flow" d="M 643 227 H 697"/>
+  <path class="flow" d="M 643 317 H 697"/>
+
+  <path class="flow" d="M 857 353 V 388 H 330 V 367 H 312"/>
+  <text class="caption" x="486" y="380">守护进程附上 JWT，POST /runtime/cli</text>
+  <text class="subtitle" x="34" y="474">断线恢复：重连时补读 /runtime/inbox；守护进程每 20 秒轮询收件箱兜底。</text>
+</svg>

@@ -23,7 +23,8 @@ import { dispatchMessagePush } from '../push.js'
 import { randomUUID, randomBytes, createHash, timingSafeEqual } from 'node:crypto'
 import {
   deleteSession, authMiddleware, type AuthedRequest,
-  audit, createWsTicket, gravatarUrlForEmail,
+  audit, createSession, createWsTicket, gravatarUrlForEmail,
+  hashPassword, hashSessionToken, verifyPassword,
 } from '../auth.js'
 import { joinAllHands, onboardStarterAgents, seedMemberDms } from '../onboardCompany.js'
 import {
@@ -46,6 +47,7 @@ import {
 import { attachComputerControlStream, deliverEngineDetect } from '../agents/computer/control-bus.js'
 import { companyTier } from '../tier.js'
 import { createShippingRouter } from './shipping-router.js'
+import { createGovernanceRouter } from './governance-router.js'
 import {
   findIdempotentCreate, IdempotencyConflictError,
   parseRequestId, requestHash,
@@ -768,7 +770,136 @@ api.get('/metrics', async (req, res) => {
   res.send(renderProm())
 })
 
-/* ============== Auth — OAuth only (Google + GitHub) ============== */
+/* ============== Auth — password + OAuth ============== */
+
+const PASSWORD_MIN_LENGTH = 12
+const PASSWORD_MAX_LENGTH = 256
+const PASSWORD_FAILURE_WINDOW_MINUTES = 15
+const PASSWORD_EMAIL_FAILURE_LIMIT = 5
+const PASSWORD_IP_FAILURE_LIMIT = 25
+
+function normalizedLoginEmail(value: unknown): string {
+  if (typeof value !== 'string') return ''
+  const email = value.trim().toLowerCase()
+  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return ''
+  return email
+}
+
+function passwordInput(value: unknown): string {
+  return typeof value === 'string' && value.length <= PASSWORD_MAX_LENGTH ? value : ''
+}
+
+async function recordPasswordAttempt(email: string, ip: string | null, success: boolean, reason: string): Promise<void> {
+  await pool.query(
+    `INSERT INTO auth_attempts (email, ip, success, reason) VALUES ($1,$2,$3,$4)`,
+    [email || null, ip, success, reason],
+  )
+}
+
+/** Password login is intentionally for existing accounts. Accounts are still
+ * created through an identity-attested OAuth flow or an administrator/invite;
+ * an authenticated user can then establish a password below. This avoids
+ * turning an unverified email claim into workspace/invitation access. */
+api.post('/auth/password/login', safe(async (req, res) => {
+  const email = normalizedLoginEmail(req.body?.email)
+  const password = passwordInput(req.body?.password)
+  const ip = req.socket.remoteAddress ?? null
+  const ua = (req.headers['user-agent'] as string | undefined) ?? null
+  if (!email || !password) throw new HttpError(400, 'email and password are required')
+
+  const throttle = await pool.query<{ email_failures: number; ip_failures: number }>(
+    `SELECT
+       COUNT(*) FILTER (WHERE email=$1)::int AS email_failures,
+       COUNT(*) FILTER (WHERE $2::text IS NOT NULL AND ip=$2)::int AS ip_failures
+       FROM auth_attempts
+      WHERE success=FALSE AND reason='bad_credentials'
+        AND created_at > NOW() - make_interval(mins => $3)`,
+    [email, ip, PASSWORD_FAILURE_WINDOW_MINUTES],
+  )
+  const limited = (throttle.rows[0]?.email_failures ?? 0) >= PASSWORD_EMAIL_FAILURE_LIMIT
+    || (throttle.rows[0]?.ip_failures ?? 0) >= PASSWORD_IP_FAILURE_LIMIT
+  if (limited) {
+    await recordPasswordAttempt(email, ip, false, 'locked')
+    await audit({ kind: 'login_failed', ip, userAgent: ua, detail: { method: 'password', reason: 'rate_limited' } })
+    res.setHeader('Retry-After', String(PASSWORD_FAILURE_WINDOW_MINUTES * 60))
+    res.status(429).json({ error: 'too many sign-in attempts; try again later' })
+    return
+  }
+
+  const { rows } = await pool.query<{
+    id: string; email: string; display_name: string; password_hash: string | null
+    suspended_at: string | null; deleted_at: string | null
+  }>(
+    `SELECT id,email,display_name,password_hash,suspended_at,deleted_at
+       FROM users WHERE LOWER(email)=$1 LIMIT 1`,
+    [email],
+  )
+  const user = rows[0]
+  const matches = await verifyPassword(password, user?.password_hash)
+  if (!user || !matches || user.suspended_at || user.deleted_at) {
+    await recordPasswordAttempt(email, ip, false, 'bad_credentials')
+    await audit({ kind: 'login_failed', userId: user?.id ?? null, ip, userAgent: ua, detail: { method: 'password', reason: 'bad_credentials' } })
+    throw new HttpError(401, 'invalid email or password')
+  }
+
+  await recordPasswordAttempt(email, ip, true, 'ok')
+  const session = await createSession(user.id, { ip: ip ?? undefined, ua: ua ?? undefined })
+  const company = await pool.query<{ company_id: string }>(
+    `SELECT company_id FROM company_members WHERE user_id=$1 ORDER BY joined_at ASC LIMIT 1`,
+    [user.id],
+  )
+  await audit({ kind: 'login', userId: user.id, companyId: company.rows[0]?.company_id ?? null, ip, userAgent: ua, detail: { method: 'password' } })
+  res.json({
+    token: session.token,
+    expiresAt: session.expiresAt.toISOString(),
+    user: { id: user.id, email: user.email, displayName: user.display_name },
+    companyId: company.rows[0]?.company_id ?? null,
+  })
+}))
+
+/** Establish a password after OAuth sign-in, or replace an existing one.
+ * Changing an existing password requires the old password. Other sessions
+ * are revoked while the session making this request remains valid. */
+api.put('/auth/password', safe(async (req, res) => {
+  const userId = requireAuth(req)
+  const currentPassword = typeof req.body?.currentPassword === 'string' ? req.body.currentPassword : ''
+  const newPassword = passwordInput(req.body?.newPassword)
+  if (!newPassword || newPassword.length < PASSWORD_MIN_LENGTH) {
+    throw new HttpError(400, `new password must be ${PASSWORD_MIN_LENGTH}-${PASSWORD_MAX_LENGTH} characters`)
+  }
+  if (newPassword === currentPassword) throw new HttpError(400, 'new password must be different')
+
+  const ip = req.socket.remoteAddress ?? null
+  const ua = (req.headers['user-agent'] as string | undefined) ?? null
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    const { rows } = await client.query<{ password_hash: string | null }>(
+      `SELECT password_hash FROM users WHERE id=$1 AND deleted_at IS NULL FOR UPDATE`, [userId],
+    )
+    if (!rows[0]) throw new HttpError(404, 'account not found')
+    if (rows[0].password_hash && !(await verifyPassword(currentPassword, rows[0].password_hash))) {
+      throw new HttpError(401, 'current password is incorrect')
+    }
+    const encoded = await hashPassword(newPassword)
+    await client.query(`UPDATE users SET password_hash=$1 WHERE id=$2`, [encoded, userId])
+    const auth = req.headers.authorization
+    const rawToken = typeof auth === 'string' && auth.startsWith('Bearer ') ? auth.slice(7).trim() : ''
+    if (rawToken) {
+      await client.query(`DELETE FROM sessions WHERE user_id=$1 AND token_hash<>$2`, [userId, hashSessionToken(rawToken)])
+    } else {
+      await client.query(`DELETE FROM sessions WHERE user_id=$1`, [userId])
+    }
+    await client.query('COMMIT')
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {})
+    throw error
+  } finally {
+    client.release()
+  }
+  await audit({ kind: 'password_changed', userId, ip, userAgent: ua, detail: { hadPassword: !!currentPassword } })
+  res.json({ ok: true, hasPassword: true })
+}))
 
 /** 302 to the provider's consent screen. State is opaque to the client —
  *  we mint it server-side, save to Redis (5min TTL), and verify on the
@@ -1008,8 +1139,10 @@ api.post('/auth/ws-ticket', safe(async (req, res) => {
 
 api.get('/auth/me', safe(async (req, res) => {
   const userId = requireAuth(req)
-  const { rows } = await pool.query<{ id: string; email: string; display_name: string; email_verified_at: string | null; is_admin: boolean }>(
-    `SELECT id, email, display_name, email_verified_at, is_admin FROM users WHERE id = $1`, [userId],
+  const { rows } = await pool.query<{ id: string; email: string; display_name: string; email_verified_at: string | null; is_admin: boolean; has_password: boolean }>(
+    `SELECT id, email, display_name, email_verified_at, is_admin,
+            (password_hash IS NOT NULL) AS has_password
+       FROM users WHERE id = $1`, [userId],
   )
   if (!rows[0]) { res.status(401).json({ error: 'session points to missing user' }); return }
   const { rows: companies } = await pool.query<{ id: string; name: string; slug: string; role: string; tier: string }>(
@@ -1033,6 +1166,7 @@ api.get('/auth/me', safe(async (req, res) => {
       email: rows[0].email,
       name: rows[0].display_name,
       emailVerified: rows[0].email_verified_at !== null,
+      hasPassword: rows[0].has_password,
       isAdmin: rows[0].is_admin,
       providers: idents.map((r) => r.provider),
     },
@@ -1770,6 +1904,8 @@ api.delete('/companies/:id', safe(async (req, res) => {
     if (!confirmation || confirmation !== companyName) {
       throw new HttpError(400, 'type the workspace name exactly to confirm deletion')
     }
+    const governed = await client.query(`SELECT 1 FROM board_cards c JOIN boards b ON b.id=c.board_id WHERE b.company_id=$1 AND c.governance_mode='GOVERNED' LIMIT 1`, [companyId])
+    if (governed.rows[0]) throw new HttpError(409, 'workspace contains retained governance records; archive and use controlled retention disposal')
     const { rows: alternatives } = await client.query<{ company_id: string }>(
       `SELECT company_id FROM company_members
         WHERE user_id = $1 AND company_id <> $2
@@ -5988,9 +6124,14 @@ api.get('/boards/:id', async (req, res) => {
     position: number; assignee_id: string | null; mentions: string[]
     created_by: string; created_at: string; updated_at: string
     comment_count: number
+    governance_mode: string; governance_state: string | null; governance_version: number
+    plan_epoch: number | null; accountable_role_id: string | null; human_sponsor_user_id: string | null
+    definition_of_done: string | null; governance_deadline: string | null
   }>(
     `SELECT c.id, c.column_id, c.title, c.description, c.position,
             c.assignee_id, c.mentions, c.created_by, c.created_at, c.updated_at,
+            c.governance_mode,c.governance_state,c.governance_version,c.plan_epoch,
+            c.accountable_role_id,c.human_sponsor_user_id,c.definition_of_done,c.governance_deadline,
             (SELECT COUNT(*)::int FROM board_card_comments cc WHERE cc.card_id = c.id) AS comment_count
        FROM board_cards c
       WHERE c.board_id = $1
@@ -6008,6 +6149,7 @@ api.get('/boards/:id', async (req, res) => {
     columns: cols.rows.map((c) => ({
       id: c.id,
       title: c.title,
+      kind: c.kind,
       position: Number(c.position),
       createdAt: c.created_at,
     })),
@@ -6024,6 +6166,14 @@ api.get('/boards/:id', async (req, res) => {
       createdBy: c.created_by,
       createdAt: c.created_at,
       updatedAt: c.updated_at,
+      governanceMode: c.governance_mode,
+      governanceState: c.governance_state,
+      governanceVersion: c.governance_version,
+      planEpoch: c.plan_epoch,
+      accountableRoleId: c.accountable_role_id,
+      humanSponsorUserId: c.human_sponsor_user_id,
+      definitionOfDone: c.definition_of_done,
+      governanceDeadline: c.governance_deadline,
     })),
   })
 })
@@ -6056,6 +6206,8 @@ api.patch('/boards/:id', async (req, res) => {
 api.delete('/boards/:id', async (req, res) => {
   const boardId = req.params.id
   const { userId: me, companyId } = await requireBoardAccess(req, boardId)
+  const governed = await pool.query(`SELECT 1 FROM board_cards WHERE board_id=$1 AND governance_mode='GOVERNED' LIMIT 1`, [boardId])
+  if (governed.rows.length) throw new HttpError(409, 'board contains governed cards; archive them through governance commands')
   await withOutboxTransaction(async (client) => {
     await client.query(`DELETE FROM boards WHERE id = $1`, [boardId])
     await enqueueBoardEvent(client, { companyId, kind: 'board.deleted', boardId, actorId: me })
@@ -6115,6 +6267,8 @@ api.delete('/boards/:bid/columns/:cid', async (req, res) => {
   const boardId = req.params.bid
   const columnId = req.params.cid
   const { userId: me, companyId } = await requireBoardAccess(req, boardId)
+  const governed = await pool.query(`SELECT 1 FROM board_cards WHERE board_id=$1 AND column_id=$2 AND governance_mode='GOVERNED' LIMIT 1`, [boardId, columnId])
+  if (governed.rows.length) throw new HttpError(409, 'column contains governed cards; archive them through governance commands')
   await withOutboxTransaction(async (client) => {
     const r = await client.query(
       `DELETE FROM board_columns WHERE id = $1 AND board_id = $2`,
@@ -6187,9 +6341,9 @@ api.patch('/boards/:bid/cards/:cid', async (req, res) => {
   // against the existing title/description and decide which broadcast kind
   // to publish (card.moved vs card.updated).
   const { rows: cur } = await pool.query<{
-    title: string; description: string | null; column_id: string; assignee_id: string | null
+    title: string; description: string | null; column_id: string; assignee_id: string | null; governance_mode: string; governance_state: string
   }>(
-    `SELECT title, description, column_id, assignee_id FROM board_cards
+    `SELECT title, description, column_id, assignee_id, governance_mode, governance_state FROM board_cards
       WHERE id = $1 AND board_id = $2 LIMIT 1`,
     [cardId, boardId],
   )
@@ -6213,6 +6367,7 @@ api.patch('/boards/:bid/cards/:cid', async (req, res) => {
     params.push(req.body.position); sets.push(`position = $${params.length}`)
   }
   if (assigneeChange.changed) {
+    if (cur[0].governance_mode === 'GOVERNED') throw new HttpError(409, 'governed card assignment is controlled by mandates and actions')
     params.push(assigneeChange.nextAssigneeId); sets.push(`assignee_id = $${params.length}`)
   }
   if (typeof req.body?.columnId === 'string') {
@@ -6223,6 +6378,10 @@ api.patch('/boards/:bid/cards/:cid', async (req, res) => {
         [newCol, boardId],
       )
       if (colCheck.rows.length === 0) throw new HttpError(404, 'column not found')
+      const target = await pool.query<{ kind: string }>('SELECT kind FROM board_columns WHERE id=$1 AND board_id=$2', [newCol, boardId])
+      if (cur[0].governance_mode === 'GOVERNED' && target.rows[0]?.kind === 'done' && cur[0].governance_state !== 'DONE') {
+        throw new HttpError(409, 'governed cards require independent review and final acceptance before Done')
+      }
       params.push(newCol); sets.push(`column_id = $${params.length}`)
       nextColumnId = newCol
       columnChanged = true
@@ -6278,6 +6437,8 @@ api.delete('/boards/:bid/cards/:cid', async (req, res) => {
   const boardId = req.params.bid
   const cardId = req.params.cid
   const { userId: me, companyId } = await requireBoardAccess(req, boardId)
+  const governed = await pool.query(`SELECT 1 FROM board_cards WHERE id=$1 AND board_id=$2 AND governance_mode='GOVERNED' LIMIT 1`, [cardId, boardId])
+  if (governed.rows.length) throw new HttpError(409, 'governed cards cannot be deleted; use archive')
   await withOutboxTransaction(async (client) => {
     const r = await client.query(
       `DELETE FROM board_cards WHERE id = $1 AND board_id = $2`,
@@ -7165,6 +7326,10 @@ api.post('/push/unregister', async (req, res) => {
 // tenant/role gates as the rest of this file; it never trusts company ids from
 // request bodies or URLs.
 api.use('/shipping', createShippingRouter({ pool, requireCompany, requireCompanyRole }))
+// Optional organizational-governance commands. The router shares the same
+// tenant/session gates as the rest of the API; its domain tables are additive
+// and ordinary Collaboration Cards never enter these paths implicitly.
+api.use('/governance', createGovernanceRouter({ pool, requireCompany, requireCompanyRole }))
 
 // Global error handler — must come after all routes. HttpError → status code.
 api.use(errorHandler)

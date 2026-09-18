@@ -573,7 +573,7 @@ export interface ApiAgentWorkspaceFileContent extends ApiAgentWorkspaceFile {
 }
 
 interface MeResponse {
-  user: { id: string; email: string; name: string; emailVerified: boolean; providers: string[] }
+  user: { id: string; email: string; name: string; emailVerified: boolean; hasPassword: boolean; providers: string[] }
   companies: Array<{ id: string; name: string; slug: string; role: string; tier?: string }>
   activeCompanyId: string | null
   serverCapabilities: ServerCapabilities
@@ -824,6 +824,16 @@ export const api = {
   },
   authLogout: () =>
     http<{ ok: boolean }>('/auth/logout', { method: 'POST' }),
+  authPasswordLogin: (input: { email: string; password: string }) =>
+    http<{ token: string; expiresAt: string; user: { id: string; email: string; displayName: string }; companyId: string | null }>('/auth/password/login', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+  setAccountPassword: (input: { currentPassword?: string; newPassword: string }) =>
+    http<{ ok: boolean; hasPassword: boolean }>('/auth/password', {
+      method: 'PUT',
+      body: JSON.stringify({ currentPassword: input.currentPassword ?? '', newPassword: input.newPassword }),
+    }),
   /** Permanently delete the signed-in user's account. Soft-deletes
    *  the user row + clears PII + invalidates every session + drops
    *  OAuth linkages. After this call returns 200, the local Bearer
@@ -1369,6 +1379,20 @@ export const api = {
   listBoards: () => http<BoardSummary[]>('/boards'),
   getBoard: (id: string) => http<BoardSnapshot>(`/boards/${encodeURIComponent(id)}`),
   getBoardCard: (id: string) => http<BoardCardLookup>(`/cards/${encodeURIComponent(id)}`),
+  listGovernanceRoles: () => http<Array<{ id: string; name: string; primaryUserId: string | null }>>('/governance/roles'),
+  createGovernanceRole: (input: { name: string; responsibilityScope: string; grantableGrants: Array<{ resourceType: string; resourceId: string; operation: string }> }) =>
+    http<{ id: string; version: number }>('/governance/roles', { method: 'POST', headers: { 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify(input) }),
+  assignGovernancePrimary: (roleId: string, humanUserId: string, expectedVersion: number) =>
+    http<{ id: string; roleVersion: number }>(`/governance/roles/${encodeURIComponent(roleId)}/assignments`, { method: 'POST', headers: { 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify({ humanUserId, expectedVersion }) }),
+  getGovernanceTimeline: (cardId: string) => http<Array<{ id: string; event_type: string; actor_id: string; occurred_at: string; payload: Record<string, unknown> }>>(`/governance/cards/${encodeURIComponent(cardId)}/timeline`),
+  upgradeCardGovernance: (cardId: string, input: { accountableRoleId: string; agentId: string; definitionOfDone: string; deadline: string; budgetLimitMicrousd: number; modelCallLimit: number; expectedVersion: number }) =>
+    http<{ cardId: string; governanceState: string; planEpoch: number }>(`/governance/cards/${encodeURIComponent(cardId)}/upgrade`, {
+      method: 'POST', headers: { 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify(input),
+    }),
+  governanceCardCommand: (cardId: string, operation: 'pause' | 'resume' | 'cancel' | 'archive', expectedVersion: number, expectedEpoch: number, reason?: string) =>
+    http<{ cardId: string; state: string }>(`/governance/cards/${encodeURIComponent(cardId)}/${operation}`, {
+      method: 'POST', headers: { 'Idempotency-Key': crypto.randomUUID() }, body: JSON.stringify({ reason, expectedVersion, expectedEpoch }),
+    }),
   createBoard: (input: { title: string; description?: string; requestId?: string }) =>
     http<{ id: string; replayed: boolean }>('/boards', { method: 'POST', body: JSON.stringify(input) }),
   updateBoard: (id: string, input: { title?: string; description?: string }) =>

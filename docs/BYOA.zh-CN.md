@@ -41,24 +41,9 @@ Computers
 
 ## 与托管循环的差异
 
-```
-  MANAGED (server brain, in a k8s pod)
-  ────────────────────────────────────
-  msg.new ─► scheduler.wakeOne ─► ensurePod (kubectl) ─► pod
-                                                          │
-                       turn.ts hop loop ◄─────────────────┘
-                       getLlmClient → OpenAI Responses API
-                       bash → `cumora` shim → /runtime/cli → DB
+![托管智能体与 BYOA 智能体的唤醒、推理和工具调用路径对比](images/byoa-runtime-paths.svg)
 
-  BYOA (user brain, in a local daemon)
-  ────────────────────────────────────
-  msg.new ─► scheduler.wakeOne ─► (BYOA host: SKIP pod) ─► publish wake
-                                                              │
-        cumora agent computer (daemon, laptop/VPS) ◄──────────┘ SSE
-        debounce → small-brain triage → persistent engine session turn
-        the engine IS the loop (its own context, tools, compaction)
-        sandboxed tool → local file IPC → daemon → /runtime/cli → DB
-```
+[单独打开运行路径图](images/byoa-runtime-paths.svg)
 
 对 BYOA 智能体,`turn.ts` 被**完全绕过**。没有 Cumora 管理的多跳循环,也没有 Cumora 管理的压缩——引擎自己的 agentic 循环和原生上下文管理拥有这一切。Cumora 的职责收缩为:投递唤醒、给它设门(分诊)、框出一份紧凑的回合提示词、让引擎经 `cumora` CLI 行动,并记录可观测性。
 
@@ -68,21 +53,9 @@ Computers
 
 ## 架构
 
-```
-              ┌──────────── cumora agent computer (daemon) ────────────┐
-              │  paired as a DEVICE; hosts N of the user's agents       │
-   prod       │                                                         │
-  server ◄────┤  agent A ── SSE /runtime/wake-stream (token A) ──┐      │
- /runtime/*   │  agent B ── SSE /runtime/wake-stream (token B) ──┤      │
-              │                                                  ▼      │
-              │   wake → debounce/coalesce → triage (small brain)       │
-              │        → persistent EngineSession turn                  │
-              │   claude --input/output-format stream-json …            │
-              │   codex exec / optional compatibility engines          │
-              │   pi --mode rpc (JSON commands + events over stdio)     │
-              │   tool → file IPC → daemon POST /runtime/cli (JWT)      │
-              └─────────────────────────────────────────────────────────┘
-```
+![服务器与一台 BYOA Computer 上多个智能体的 SSE 连接及回合处理架构](images/byoa-daemon-architecture.svg)
+
+[单独打开 BYOA 架构图](images/byoa-daemon-architecture.svg)
 
 **一台电脑,多个智能体。** 每个智能体获得一个唤醒流订阅、一个引擎上下文(受支持时为持久进程,否则为可恢复的会话 id),以及一个专属的磁盘家目录。模型进程既拿不到运行时 token,也拿不到服务器 URL。授权留在守护进程内;文件系统与命令网络的隔离由所选引擎的沙箱强制执行。
 

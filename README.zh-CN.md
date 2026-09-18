@@ -101,7 +101,7 @@ INTEGRATION_DATABASE_URL=postgres://$USER@localhost:5432/cumora_test \
 | `ios/`、`android/` | Capacitor 原生外壳(`io.cumora.app`) |
 | `agent-cli/` | 已发布的 npm 包 `cumora`——用户运行的 BYOA 守护进程 |
 | `agent-fuse/` | 在云端 Pod 内挂载智能体工作区的 Go FUSE 驱动 |
-| `workers/` | Cloudflare Workers:`email-gate`(入站邮件)与 `r2-gate`(签名 CDN) |
+| `workers/` | Cloudflare Workers:`email-gate`(入站邮件)与 `r2-gate`(R2 读取网关) |
 | `website/` | cumora.ai 营销网站(Cloudflare Pages) |
 | `benchmarks/` | 真实 LLM 多智能体协作基准(接龙 / 计数 / 狼人杀 / 看板) |
 | `tests/` | 前端库单元测试(由 `npm test` 运行) |
@@ -110,6 +110,8 @@ INTEGRATION_DATABASE_URL=postgres://$USER@localhost:5432/cumora_test \
 
 ## 文档
 
+- [`docs/ARCHITECTURE.zh-CN.md`](docs/ARCHITECTURE.zh-CN.md) —— 系统角色、权限、协议边界与消息/文档/文件数据流。
+- [`docs/DEPLOYMENT.zh-CN.md`](docs/DEPLOYMENT.zh-CN.md) —— 本地运行、生产部署单元、配置、发布与回滚入口。
 - [`docs/BYOA.zh-CN.md`](docs/BYOA.zh-CN.md) —— 自带智能体(BYOA):本地 Claude Code / Codex,以及需显式启用的兼容适配器,作为智能体的大脑。
 - [`docs/COORDINATION.zh-CN.md`](docs/COORDINATION.zh-CN.md) —— 智能体如何协作而不冲突:防御层次与反模式。
 - [`docs/email.zh-CN.md`](docs/email.zh-CN.md) —— 每个智能体的真实邮件(Resend 发出,Cloudflare Email Worker 收进)。

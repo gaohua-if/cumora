@@ -81,15 +81,13 @@ RUN apt-get update \
   && chmod +x /out-kubectl
 
 # ─── stage 4: runtime ───────────────────────────────────────────────
-FROM node:20-bookworm-slim
+FROM node:20-bookworm-slim AS runtime-base
 
 RUN apt-get update \
   && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
        tini \
        ca-certificates \
   && rm -rf /var/lib/apt/lists/*
-
-COPY --from=kubectl-build /out-kubectl /usr/local/bin/kubectl
 
 WORKDIR /app
 
@@ -112,3 +110,12 @@ ENV NODE_ENV=production
 # dedicated pre-deploy Job overrides it with `npm run migrate`.
 ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["npm", "run", "server:start"]
+
+# Standalone Docker / Compose deployments do not need kubectl. Building this
+# explicit target also lets BuildKit skip the independent kubectl-build stage.
+FROM runtime-base AS standalone
+
+# Keep the Kubernetes-capable image as the Dockerfile's default (last) target
+# for the existing cluster build pipeline.
+FROM runtime-base AS kubernetes
+COPY --from=kubectl-build /out-kubectl /usr/local/bin/kubectl

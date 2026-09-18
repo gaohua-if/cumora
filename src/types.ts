@@ -382,6 +382,7 @@ export interface BoardColumn {
   id: string
   title: string
   position: number
+  kind?: 'todo' | 'doing' | 'done' | null
   createdAt: string
 }
 
@@ -398,6 +399,14 @@ export interface BoardCard {
   createdBy: string
   createdAt: string
   updatedAt: string
+  governanceMode?: 'COLLABORATION' | 'GOVERNED'
+  governanceState?: 'READY' | 'IN_PROGRESS' | 'IN_REVIEW' | 'PAUSED' | 'DONE' | 'CANCELLED' | null
+  governanceVersion?: number
+  planEpoch?: number | null
+  accountableRoleId?: string | null
+  humanSponsorUserId?: string | null
+  definitionOfDone?: string | null
+  governanceDeadline?: string | null
 }
 
 export interface BoardCardComment {

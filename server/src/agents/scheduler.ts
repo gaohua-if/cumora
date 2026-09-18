@@ -59,7 +59,7 @@ export interface SteerWakePayload {
 }
 
 type WakeReason = 'message.new' | 'idle' | 'manual' | 'background_scan' | 'poll.updated'
-type WakeOptions = Pick<AgentTurnOptions, 'idleReason' | 'backgroundBrief' | 'pollBrief' | 'triageNote'> & {
+type WakeOptions = Pick<AgentTurnOptions, 'idleReason' | 'backgroundBrief' | 'pollBrief' | 'triageNote' | 'governanceAttemptId'> & {
   /** Exact durable notice to acknowledge before managed-runtime triage. */
   triageTarget?: { conversationId: string; messageId: string }
   /** Message fan-out must resolve placement before delivering to a live runtime. */
@@ -402,6 +402,7 @@ async function wakeOne(
     ...(options.backgroundBrief ? { backgroundBrief: options.backgroundBrief } : {}),
     ...(options.pollBrief ? { pollBrief: options.pollBrief } : {}),
     ...(options.triageNote ? { triageNote: options.triageNote } : {}),
+    ...(options.governanceAttemptId ? { governanceAttemptId: options.governanceAttemptId } : {}),
   }
   const delivered = await deliverWake(agentId, wakePayload)
 

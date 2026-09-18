@@ -167,6 +167,7 @@ async function featureDetail(pool: Pool, companyId: string, featureId: string) {
             f.builder_ids AS "builderIds", f.project_id AS "projectId",
             f.conversation_id AS "conversationId", f.document_id AS "documentId",
             f.board_card_id AS "boardCardId", f.created_by AS "createdBy",
+            f.contract_revision AS "contractRevision", f.governance_version AS "governanceVersion",
             f.updated_by AS "updatedBy", f.created_at AS "createdAt",
             f.updated_at AS "updatedAt", f.archived_at AS "archivedAt"
        FROM shipping_features f
@@ -585,7 +586,27 @@ export function createShippingRouter(deps: ShippingRouterDeps): Router {
       throw new ShippingError(409, 'passed/failed verification requires evidence')
     }
     if (nextStatus === 'waived' && !text(body.notes)) throw new ShippingError(409, 'waiving a square requires a written reason')
-    await pool.query(
+    const governed = (await pool.query<any>(`SELECT c.id AS card_id,c.plan_epoch,c.governance_state,f.contract_revision
+      FROM shipping_features f JOIN board_cards c ON c.id=f.board_card_id
+      WHERE f.id=$1 AND c.governance_mode='GOVERNED'`, [feature.id])).rows[0]
+    if (governed && completing) {
+      if (!text(body.verificationAttemptId, 200) || !Array.isArray(body.artifactVersionRefs) || body.artifactVersionRefs.length === 0 || !/^[a-f0-9]{64}$/.test(text(body.candidateHash, 64)) || Number(body.contractRevision) !== Number(governed.contract_revision)) {
+        throw new ShippingError(409, 'governed verification requires attempt, exact artifact versions, candidate SHA256, and current contract revision')
+      }
+      const refs = await pool.query(`SELECT version_id FROM governance_artifact_versions WHERE company_id=$1 AND card_id=$2 AND version_id=ANY($3::text[])`, [companyId, governed.card_id, body.artifactVersionRefs])
+      if (refs.rows.length !== new Set(body.artifactVersionRefs).size) throw new ShippingError(409, 'verification artifacts do not belong to the governed card')
+      const verificationAttempt = (await pool.query<any>(`SELECT at.agent_id,a.purpose,a.plan_epoch
+        FROM governance_action_attempts at JOIN governance_actions a ON a.id=at.action_id
+        WHERE at.id=$1 AND at.company_id=$2 AND a.card_id=$3 AND a.plan_epoch=$4
+          AND a.purpose='VERIFY' AND at.state IN ('RUNNING','WAITING_HUMAN','SUCCEEDED')`, [text(body.verificationAttemptId, 200), companyId, governed.card_id, governed.plan_epoch])).rows[0]
+      if (!verificationAttempt) throw new ShippingError(409, 'governed verification requires a current independent VERIFY attempt')
+      const producer = (await pool.query(`SELECT 1 FROM governance_artifact_versions WHERE company_id=$1 AND card_id=$2 AND version_id=ANY($3::text[]) AND producer_principal_ids ? $4 LIMIT 1`, [companyId, governed.card_id, body.artifactVersionRefs, verificationAttempt.agent_id])).rows[0]
+      if (producer) throw new ShippingError(409, 'artifact producer cannot verify the same candidate')
+    }
+    const writer = await pool.connect()
+    try {
+      await writer.query('BEGIN')
+      await writer.query(
       `UPDATE shipping_verifications SET
          title = COALESCE($1, title), description = COALESCE($2, description),
          method = COALESCE($3, method), required = COALESCE($4, required),
@@ -600,9 +621,17 @@ export function createShippingRouter(deps: ShippingRouterDeps): Router {
         evidence === null ? null : JSON.stringify(evidence), body.notes === undefined ? null : text(body.notes),
         body.dueAt === undefined ? null : isoOrNull(body.dueAt), completing, completing ? userId : null,
         req.params.verificationId, feature.id],
-    )
+      )
+      if (governed && completing) {
+        const resultId = `svr-${randomUUID()}`
+        await writer.query(`INSERT INTO shipping_verification_results
+          (id,company_id,feature_id,verification_id,verification_attempt_id,contract_revision,card_id,plan_epoch,artifact_version_refs,candidate_hash,verifier_id,producer_builder_snapshot,evidence_version_refs,decision,notes)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12::jsonb,$13::jsonb,$14,$15)`,
+          [resultId, companyId, feature.id, req.params.verificationId, text(body.verificationAttemptId, 200), Number(body.contractRevision), governed.card_id, governed.plan_epoch, JSON.stringify(body.artifactVersionRefs), text(body.candidateHash, 64), userId, JSON.stringify(builderIds), JSON.stringify(body.evidenceVersionRefs ?? []), nextStatus.toUpperCase(), text(body.notes)])
+        await writer.query(`UPDATE shipping_verifications SET latest_result_id=$1 WHERE id=$2`, [resultId, req.params.verificationId])
+      }
     if (nextStatus === 'failed') {
-      await pool.query(
+      await writer.query(
         `INSERT INTO shipping_regressions
           (id, feature_id, source_verification_id, title, kind, expected, status, created_by)
          VALUES ($1,$2,$3,$4,'manual_replay',$5,'failing',$6)
@@ -612,7 +641,7 @@ export function createShippingRouter(deps: ShippingRouterDeps): Router {
           `Replay failed square: ${text(body.title, 300) || current.title}`,
           'The behavior proven by this square remains true', userId],
       )
-      await pool.query(
+      await writer.query(
         `INSERT INTO shipping_friction_reports
           (id, company_id, feature_id, reporter_id, source, source_key, title,
            description, severity, frequency, status, evidence)
@@ -626,7 +655,14 @@ export function createShippingRouter(deps: ShippingRouterDeps): Router {
           JSON.stringify(evidence ?? [])],
       )
     }
-    await recordEvent(pool, { companyId, featureId: feature.id, actorId: userId, kind: 'verification.updated', data: { id: req.params.verificationId, status: nextStatus } })
+      await recordEvent(writer, { companyId, featureId: feature.id, actorId: userId, kind: 'verification.updated', data: { id: req.params.verificationId, status: nextStatus } })
+      await writer.query('COMMIT')
+    } catch (error) {
+      await writer.query('ROLLBACK').catch(() => {})
+      throw error
+    } finally {
+      writer.release()
+    }
     res.json(await featureDetail(pool, companyId, feature.id))
   })
 

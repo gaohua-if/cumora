@@ -233,14 +233,24 @@ export class HttpRuntimeClient implements AgentRuntimeClient {
     inputMessageIds?: string[]
     inboxCount?: number
     fingerprint?: string
+    governanceAttemptId?: string
   }): Promise<string> {
     const out = await this.call<{ runId: string }>('POST', '/runs', {
       trigger: args.trigger,
       inputMessageIds: args.inputMessageIds,
       inboxCount: args.inboxCount,
       fingerprint: args.fingerprint,
+      governanceAttemptId: args.governanceAttemptId,
     })
     return out.runId
+  }
+
+  async authorizeModelCall(args: { runId: string; agentId: string; companyId: string; providerCallId: string; model: string; maxInputTokens: number; maxOutputTokens: number }) {
+    return this.call<{ reservationId: string; amountMicrousd: number } | null>('POST', '/model-calls/authorize', args)
+  }
+
+  async settleModelCall(args: { runId: string; agentId: string; companyId: string; providerCallId: string; usage: RuntimeTokenUsage }) {
+    return this.call<{ actualAmountMicrousd: number; budgetFrozen: boolean } | null>('POST', '/model-calls/settle', args)
   }
 
   async recordEvent(event: {

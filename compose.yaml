@@ -1,0 +1,83 @@
+name: cumora
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.6-pg16-bookworm
+    restart: unless-stopped
+    env_file:
+      - ${CUMORA_ENV_FILE:-.env.docker}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  migrate:
+    image: cumora-server:local
+    build:
+      context: .
+      dockerfile: server/docker/cumora-server.Dockerfile
+      target: standalone
+    env_file:
+      - ${CUMORA_ENV_FILE:-.env.docker}
+    command: ["npm", "run", "migrate"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  server:
+    image: cumora-server:local
+    build:
+      context: .
+      dockerfile: server/docker/cumora-server.Dockerfile
+      target: standalone
+    restart: unless-stopped
+    env_file:
+      - ${CUMORA_ENV_FILE:-.env.docker}
+    ports:
+      - "5181:5181"
+    volumes:
+      - uploads:/app/server/uploads
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - fetch('http://127.0.0.1:5181/api/livez').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  postgres-data:
+  redis-data:
+  uploads:

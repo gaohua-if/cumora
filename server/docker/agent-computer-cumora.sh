@@ -26,6 +26,17 @@ ARGV_JSON=$(jq -nc --args '$ARGS.positional' -- "$@" 2>/dev/null) || {
   exit 70
 }
 
+CONTEXT_JSON=null
+if [ "${1:-}" = "card" ]; then
+  case "${2:-}" in
+    move|assign|comment|rename|delete)
+      CONTEXT_JSON=$(curl -fsS --max-time 10 \
+        -H "Authorization: Bearer $CUMORA_AGENT_RUNTIME_TOKEN" \
+        "$CUMORA_AGENT_RUNTIME_URL/governance-context/${3:-}" 2>/dev/null || printf 'null')
+      ;;
+  esac
+fi
+
 # Capture the body separately from the HTTP status so we can route
 # transport errors (network, 5xx) to stderr while still surfacing
 # 4xx JSON error bodies to stdout the way an error from runCli would.
@@ -35,7 +46,7 @@ STATUS=$(curl -sS -o "$TMP" -w '%{http_code}' \
   --max-time "${CUMORA_CLI_TIMEOUT:-600}" \
   -H "Authorization: Bearer $CUMORA_AGENT_RUNTIME_TOKEN" \
   -H 'Content-Type: application/json' \
-  -d "{\"argv\":$ARGV_JSON}" \
+  -d "{\"argv\":$ARGV_JSON,\"governanceContext\":$CONTEXT_JSON}" \
   "$CUMORA_AGENT_RUNTIME_URL/cli") || {
     # curl's own stderr (network errors etc.) already went to fd 2
     # since we didn't redirect it; this catch-all is for the case

@@ -17,6 +17,7 @@
  * No streaming reply — the agent's reply lands as a `cumora reply` tool call,
  * which writes the message in one shot and broadcasts CH_MESSAGE_NEW.
  */
+import { randomUUID } from 'node:crypto'
 import type { ResponseInputItem, ResponseStreamEvent } from 'openai/resources/responses/responses'
 import { env } from '../env.js'
 import { redis } from '../redis.js'
@@ -122,6 +123,8 @@ import {
 import { mentionedAgentIds } from './scheduler.js'
 
 export interface AgentTurnOptions {
+  /** Binds this managed turn to exactly one governed Action Attempt. */
+  governanceAttemptId?: string
   /** Why this turn was started. Message-driven turns remain the default. */
   trigger?: 'message.new' | 'idle' | 'manual' | 'background_scan' | 'poll.updated'
   /** Short scheduler note rendered only for idle synthetic wakes. */
@@ -1633,6 +1636,7 @@ export async function runAgentTurn(agentId: string, options: AgentTurnOptions = 
     inputMessageIds: inbox.map((m) => m.id),
     inboxCount: inbox.length,
     fingerprint,
+    governanceAttemptId: options.governanceAttemptId,
   })
   let finalStatus: AgentRunStatus = 'completed'
   let finalSummary = ''
@@ -2607,15 +2611,24 @@ Mechanics:
       // rows already recorded above).
       const hopModel = enforceModelPolicy(realTaskModel(persona.model), 'agent-turn')
       const hopT0 = Date.now()
+      const providerCallId = `gmc-${randomUUID()}`
+      if (options.governanceAttemptId && runCompanyId) {
+        const maxInputTokens = Math.min(2_147_483_647, Math.max(1, estimateHistoryTokens(history) + Math.ceil(instructions.length / 4)))
+        await runtime.authorizeModelCall({ runId, agentId, companyId: runCompanyId, providerCallId, model: hopModel, maxInputTokens, maxOutputTokens: 4000 })
+      }
       let hopRecorded = false
-      const recordHop = (status: 'ok' | 'rate_limited' | 'timeout' | 'failed', usage: TokenUsage | null, error?: string) => {
+      const recordHop = async (status: 'ok' | 'rate_limited' | 'timeout' | 'failed', usage: TokenUsage | null, error?: string) => {
         if (hopRecorded) return
         hopRecorded = true
-        void recordLlmCall({
+        await recordLlmCall({
           purpose: 'agent-turn', companyId: runCompanyId, agentId, runId,
           model: hopModel, usage,
           latencyMs: Date.now() - hopT0, status, error,
-          extras: { hop: hop + 1, imageStripRetryUsed, retryKind },
+          extras: { hop: hop + 1, imageStripRetryUsed, retryKind, providerCallId },
+        })
+        if (options.governanceAttemptId && runCompanyId) await runtime.settleModelCall({
+          runId, agentId, companyId: runCompanyId, providerCallId,
+          usage: usage ?? { inputTokens: 0, cachedInputTokens: 0, cacheCreationTokens: 0, outputTokens: 0 },
         })
       }
       let stream
@@ -2639,7 +2652,7 @@ Mechanics:
         // Record the failed attempt: no usage (the SDK error preceded any
         // stream events), classified by error shape. Even retried attempts
         // are real sub2api calls so they get their own row.
-        recordHop(classifyLlmCallError(err), null, err instanceof Error ? err.message : String(err))
+        await recordHop(classifyLlmCallError(err), null, err instanceof Error ? err.message : String(err))
         // The "image_url unreachable" rejection lands here (before we ever
         // start streaming). HEAD-probing in the prompt builder catches most
         // bad URLs, but some CDNs 200 on HEAD and 4xx on GET — this is the
@@ -2670,7 +2683,7 @@ Mechanics:
         // Stream itself blew up mid-flight. Record with whatever partial usage
         // streamState managed to capture before the failure (often null on a
         // connection drop pre-usage).
-        recordHop(
+        await recordHop(
           classifyLlmCallError(err),
           streamState.responseUsage ? usageFromOpenAI(streamState.responseUsage) : null,
           err instanceof Error ? err.message : String(err),
@@ -2686,7 +2699,7 @@ Mechanics:
         const hopUsage = usageFromOpenAI(streamState.responseUsage)
         turnUsage = addUsage(turnUsage, hopUsage)
         missingUsageHopCount = 0
-        recordHop('ok', hopUsage)
+        await recordHop('ok', hopUsage)
       } else {
         missingUsageHopCount += 1
         totalTokensThisTurn = estimateHistoryTokens(history)
@@ -2707,7 +2720,7 @@ Mechanics:
         // landed — record the row with usage=null (measured=false, cost=0)
         // so the spend rollup at least counts the call, with cost flagged
         // as unmeasured. Better than dropping it silently.
-        recordHop('ok', null)
+        await recordHop('ok', null)
       }
       // Stream consumed successfully on this attempt — leave the inner
       // strip-and-retry loop. (We never break-via-fallthrough on attempt 0

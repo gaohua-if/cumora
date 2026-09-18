@@ -36,12 +36,15 @@
  *                              pure base-URL swap (server/src/orcarouter.ts),
  *                              since OrcaRouter speaks the Responses API
  *                              natively — no translation needed.
+ *   - `deepseek/<model>`     → DeepSeek's OpenAI-compatible Responses API
+ *                              via server/src/deepseek.ts.
  * Everything else about the returned client (chat.completions, images,
  * embeddings, non-prefixed responses.create calls) is the same object
  * callers already know.
  */
 import OpenAI from 'openai'
 import { pool } from './db/pool.js'
+import { deepseekResponsesCreate, isDeepSeekModel } from './deepseek.js'
 import { env } from './env.js'
 import { isNovitaModel, novitaResponsesShim } from './novita.js'
 import { isOrcaRouterModel, orcarouterResponsesCreate } from './orcarouter.js'
@@ -92,6 +95,8 @@ export function __setLlmClientOverrideForTesting(fn: typeof testLlmOverride): vo
  *    - `orcarouter/<model>` → OrcaRouter (server/src/orcarouter.ts), a pure
  *                             base-URL swap — OrcaRouter speaks the Responses
  *                             API natively.
+ *    - `deepseek/<model>`   → DeepSeek (server/src/deepseek.ts), also a pure
+ *                             Responses-API base-URL swap.
  *
  *  Model, not tenant, decides the provider: `getLlmClient` is resolved
  *  once per tenant/hop before the model for that specific call is even
@@ -111,9 +116,12 @@ function warnProviderUnconfiguredOnce(provider: 'Novita' | 'OrcaRouter', model: 
     console.warn(`[llm] model "${model}" requests Novita but NOVITA_API_KEY is unset — using the tenant's normal client instead`)
     return
   }
-  if (orcarouterUnconfiguredWarned) return
-  orcarouterUnconfiguredWarned = true
-  console.warn(`[llm] model "${model}" requests OrcaRouter but ORCAROUTER_API_KEY is unset — using the tenant's normal client instead`)
+  if (provider === 'OrcaRouter') {
+    if (orcarouterUnconfiguredWarned) return
+    orcarouterUnconfiguredWarned = true
+    console.warn(`[llm] model "${model}" requests OrcaRouter but ORCAROUTER_API_KEY is unset — using the tenant's normal client instead`)
+    return
+  }
 }
 
 function withProviderRouting(client: OpenAI): OpenAI {
@@ -143,6 +151,10 @@ function withProviderRouting(client: OpenAI): OpenAI {
                 return orcarouterResponsesCreate(args, opts)
               }
               warnProviderUnconfiguredOnce('OrcaRouter', args.model)
+            } else if (isDeepSeekModel(args.model)) {
+              // OPENAI_API_KEY is required at boot and may intentionally hold
+              // a DeepSeek key; DEEPSEEK_API_KEY is only an optional override.
+              return deepseekResponsesCreate(args, opts)
             }
             return (real.create as (a: unknown, o?: unknown) => unknown)(args, opts)
           }

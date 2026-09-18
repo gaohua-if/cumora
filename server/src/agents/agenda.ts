@@ -29,8 +29,9 @@
  */
 import { pool } from '../db/pool.js'
 import { env } from '../env.js'
-import { getTrackedLlmClient } from './llm-ledger.js'
 import { redis } from '../redis.js'
+import { getTrackedLlmClient } from './llm-ledger.js'
+import { enforceModelPolicy } from './model-policy.js'
 
 /** A Kanban card that the agent should plausibly act on. */
 export interface AgendaCard {
@@ -442,6 +443,9 @@ export async function classifyAgendaActionable(args: {
    *  is queryable. Cloud callers (idle.ts) pass `personaId`; the BYOA
    *  endpoint passes `c.sub`. Older callers can omit it. */
   agentId?: string
+  /** Internal override for tests or trusted server-side callers. Operators
+   *  normally configure AGENDA_CLASSIFIER_MODEL instead. */
+  model?: string
 }): Promise<AgendaVerdict> {
   const { persona, companyId, agenda } = args
   if (agenda.cards.length === 0 && agenda.events.length === 0 && agenda.stalls.length === 0) {
@@ -481,7 +485,7 @@ Reply as strict JSON.`
       },
     })
     const r = await client.responses.create({
-      model: env.OPENAI_MODEL_SUPPORT,
+      model: enforceModelPolicy(args.model ?? env.AGENDA_CLASSIFIER_MODEL, 'agenda'),
       instructions,
       input,
       text: { format: { type: 'json_object' } },

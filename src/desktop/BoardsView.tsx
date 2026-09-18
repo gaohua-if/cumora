@@ -13,6 +13,7 @@ import { useResizableWidth } from '@/lib/useResizableWidth'
 import { useT } from '@/lib/i18n'
 import { IBoard, IPlus, IAt, ITrash, IMore } from '@/components/icons'
 import { cn } from '@/lib/utils'
+import { api } from '@/api/client'
 import type { BoardCard, BoardCardComment, BoardColumn, Participant } from '@/types'
 
 /**
@@ -811,6 +812,7 @@ function CardDetailModal({ boardId, card, columns, onClose }: {
   const deleteCard = useBoards((s) => s.deleteCard)
   const loadComments = useBoards((s) => s.loadComments)
   const addComment = useBoards((s) => s.addComment)
+  const refreshBoard = useBoards((s) => s.refreshBoard)
   // Select the raw entry (may be undefined), then fall back OUTSIDE the
   // selector — `?? []` inside would mint a new array literal on every
   // call, fail Object.is, and cycle render → reselect → render forever.
@@ -893,17 +895,18 @@ function CardDetailModal({ boardId, card, columns, onClose }: {
                 onValueChange={(columnId) => void moveToColumn(columnId)}
                 options={columns.map((c) => ({ value: c.id, label: c.title }))}
                 ariaLabel={t('boards.ariaColumn')}
+                disabled={card.governanceMode === 'GOVERNED'}
               />
             </div>
             <div>
               <div className="text-[11px] uppercase tracking-wide text-ink-400 mb-1">{t('boards.assignee')}</div>
-              <AssigneePicker
-                value={card.assigneeId}
-                onChange={(id) => void setAssignee(id)}
-                meId={meId ?? null}
-              />
+              {card.governanceMode === 'GOVERNED'
+                ? <div className="rounded-md border border-ink-100 bg-ink-50 px-3 py-2 text-sm text-ink-600">Controlled by Mandate</div>
+                : <AssigneePicker value={card.assigneeId} onChange={(id) => void setAssignee(id)} meId={meId ?? null} />}
             </div>
           </section>
+
+          <GovernancePanel card={card} onChanged={() => refreshBoard(boardId)} />
 
           <section>
             <div className="text-[11px] uppercase tracking-wide text-ink-400 mb-1">{t('boards.description')}</div>
@@ -980,17 +983,87 @@ function CardDetailModal({ boardId, card, columns, onClose }: {
           <div className="text-[11px] text-ink-400">
             {t('boards.createdByAt', { time: formatTime(card.createdAt), author: byId[card.createdBy]?.name ?? card.createdBy })}
           </div>
-          <button
+          {card.governanceMode !== 'GOVERNED' && <button
             type="button"
             onClick={async () => {
               if (!confirm(t('boards.deleteCardConfirm'))) return
               try { await deleteCard(boardId, card.id); onClose() } catch (e) { console.warn(e) }
             }}
             className="text-xs text-coral-deep hover:underline"
-          >{t('boards.deleteCard')}</button>
+          >{t('boards.deleteCard')}</button>}
         </footer>
       </div>
     </div>
+  )
+}
+
+function GovernancePanel({ card, onChanged }: { card: BoardCard; onChanged: () => Promise<void> }) {
+  const participants = useParticipants((s) => s.byId)
+  const meId = useMe()
+  const [roles, setRoles] = useState<Array<{ id: string; name: string; primaryUserId: string | null }>>([])
+  const [timeline, setTimeline] = useState<Array<{ id: string; event_type: string; actor_id: string; occurred_at: string }>>([])
+  const [roleId, setRoleId] = useState('')
+  const [agentId, setAgentId] = useState('')
+  const [dod, setDod] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const governed = card.governanceMode === 'GOVERNED'
+
+  useEffect(() => {
+    if (governed) void api.getGovernanceTimeline(card.id).then(setTimeline).catch(() => setTimeline([]))
+    else void api.listGovernanceRoles().then((rows) => { setRoles(rows); setRoleId(rows[0]?.id ?? '') }).catch(() => setRoles([]))
+  }, [card.id, governed])
+
+  async function upgrade() {
+    if (!roleId || !agentId || !dod.trim()) { setError('Role, Agent, and Definition of Done are required.'); return }
+    setBusy(true); setError('')
+    try {
+      await api.upgradeCardGovernance(card.id, { accountableRoleId: roleId, agentId, definitionOfDone: dod.trim(), deadline: new Date(Date.now() + 7 * 86_400_000).toISOString(), budgetLimitMicrousd: 1_000_000, modelCallLimit: 100, expectedVersion: card.governanceVersion ?? 0 })
+      await onChanged()
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Upgrade failed') } finally { setBusy(false) }
+  }
+
+  async function createRole() {
+    if (!meId) return
+    setBusy(true); setError('')
+    try {
+      const role = await api.createGovernanceRole({ name: `Owner · ${card.title}`.slice(0, 200), responsibilityScope: `Accountable for Card ${card.id}`, grantableGrants: [
+        { resourceType: 'CARD', resourceId: card.id, operation: 'card.read' },
+        { resourceType: 'CARD', resourceId: card.id, operation: 'card.action.create' },
+        { resourceType: 'CARD', resourceId: card.id, operation: 'artifact.publish' },
+      ] })
+      await api.assignGovernancePrimary(role.id, meId, role.version)
+      const next = await api.listGovernanceRoles(); setRoles(next); setRoleId(role.id)
+    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Role creation failed') } finally { setBusy(false) }
+  }
+
+  async function command(operation: 'pause' | 'resume' | 'cancel' | 'archive') {
+    setBusy(true); setError('')
+    try { await api.governanceCardCommand(card.id, operation, card.governanceVersion ?? 0, card.planEpoch ?? 0); await onChanged() } catch (cause) { setError(cause instanceof Error ? cause.message : 'Command failed') } finally { setBusy(false) }
+  }
+
+  return (
+    <section className="rounded-lg border border-ink-100 bg-sky2-50/40 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div><div className="text-[11px] uppercase tracking-wide text-ink-400">Governance</div><div className="mt-1 font-medium text-ink-800">{governed ? `${card.governanceState} · Epoch ${card.planEpoch}` : 'Collaboration mode'}</div></div>
+        {governed && <div className="flex gap-2">
+          {card.governanceState === 'PAUSED' ? <button disabled={busy} onClick={() => void command('resume')} className="text-xs text-skype-deep">Resume</button> : !['DONE','CANCELLED'].includes(card.governanceState ?? '') && <button disabled={busy} onClick={() => void command('pause')} className="text-xs text-skype-deep">Pause</button>}
+          {!['DONE','CANCELLED'].includes(card.governanceState ?? '') && <button disabled={busy} onClick={() => void command('cancel')} className="text-xs text-coral-deep">Cancel</button>}
+          {['DONE','CANCELLED'].includes(card.governanceState ?? '') && <button disabled={busy} onClick={() => void command('archive')} className="text-xs text-ink-600">Archive</button>}
+        </div>}
+      </div>
+      {governed ? <>
+        <dl className="mt-3 grid grid-cols-2 gap-2 text-xs"><div><dt className="text-ink-400">Accountable role</dt><dd>{card.accountableRoleId}</dd></div><div><dt className="text-ink-400">Human sponsor</dt><dd>{participants[card.humanSponsorUserId ?? '']?.name ?? card.humanSponsorUserId}</dd></div><div className="col-span-2"><dt className="text-ink-400">Definition of Done</dt><dd className="whitespace-pre-wrap">{card.definitionOfDone}</dd></div></dl>
+        <details className="mt-3"><summary className="cursor-pointer text-xs text-ink-500">Timeline ({timeline.length})</summary><ol className="mt-2 space-y-1 text-xs text-ink-600">{timeline.slice(-8).reverse().map((item) => <li key={item.id}>{item.event_type} · {item.actor_id} · {formatTime(item.occurred_at)}</li>)}</ol></details>
+      </> : <details className="mt-3"><summary className="cursor-pointer text-sm text-skype-deep">Enable governed work</summary><div className="mt-3 grid gap-2">
+        {roles.length === 0 && <button disabled={busy || !meId} onClick={() => void createRole()} className="rounded-md border border-skype/30 bg-cloud px-3 py-2 text-sm text-skype-deep">Create accountable role with me as Primary</button>}
+        <Select value={roleId} onValueChange={setRoleId} options={roles.map((role) => ({ value: role.id, label: role.name, disabled: !role.primaryUserId }))} ariaLabel="Accountable role" />
+        <Select value={agentId} onValueChange={setAgentId} options={Object.values(participants).filter((p) => p.kind === 'agent' && !p.departedAt).map((p) => ({ value: p.id, label: p.name }))} ariaLabel="Executing agent" />
+        <textarea value={dod} onChange={(event) => setDod(event.target.value)} placeholder="Definition of Done" className="rounded-md border border-ink-200 bg-cloud px-3 py-2 text-sm" rows={3} />
+        <button disabled={busy} onClick={() => void upgrade()} className="rounded-md bg-skype px-3 py-2 text-sm text-white disabled:opacity-50">{busy ? 'Enabling…' : 'Enable governance'}</button>
+      </div></details>}
+      {error && <p className="mt-2 text-xs text-coral-deep">{error}</p>}
+    </section>
   )
 }
 

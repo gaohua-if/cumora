@@ -1,6 +1,6 @@
 /**
- * Sign-in screen — OAuth only (Google + GitHub). No password forms, no
- * signup, no forgot. Provider buttons trigger a full-page redirect to
+ * Sign-in screen — email/password plus OAuth providers. Provider buttons
+ * trigger a full-page redirect to
  * /api/auth/start/<provider> on the configured server origin (relative
  * URL goes through the Vite proxy in dev; baked-in absolute URL in
  * packaged builds). The provider returns to /auth/done with a fragment
@@ -11,8 +11,8 @@
  * picking the server is a sign-in-time decision — the auth token is
  * per-server.
  */
-import { useState, useEffect } from 'react'
-import { api, getPairingServerOrigin, getServerOrigin, setServerOrigin } from '@/api/client'
+import { useState, useEffect, type FormEvent } from 'react'
+import { ApiError, api, getPairingServerOrigin, getServerOrigin, setServerOrigin } from '@/api/client'
 import { isCapacitorIOS, isElectron } from '@/lib/runtime'
 import { isNativePlatform, nativePlatform, runAppleSignIn, runOAuth } from '@/lib/native'
 import { useAuth } from '@/stores/auth'
@@ -33,7 +33,9 @@ const PRESET_LABEL_KEY: Record<string, MessageKey> = {
 
 export function AuthScreen() {
   const t = useT()
-  const [busy, setBusy] = useState<'google' | 'github' | 'gitlab' | 'apple' | null>(null)
+  const [busy, setBusy] = useState<'password' | 'google' | 'github' | 'gitlab' | 'apple' | null>(null)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   // GitLab is opt-in and can point at a self-managed instance, so most
   // deployments have no credentials for it — ask the server rather than
   // offering a button that can only 503.
@@ -101,6 +103,25 @@ export function AuthScreen() {
       } else {
         setErr(msg)
       }
+      setBusy(null)
+    }
+  }
+
+  async function signInWithPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!email.trim() || !password) return
+    setBusy('password'); setErr(null)
+    try {
+      const r = await api.authPasswordLogin({ email: email.trim(), password })
+      useAuth.getState().setSession(
+        r.token,
+        { id: r.user.id, email: r.user.email, name: r.user.displayName, hasPassword: true, providers: [] },
+        r.companyId,
+      )
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) setErr(t('auth.invalidCredentials'))
+      else if (error instanceof ApiError && error.status === 429) setErr(t('auth.tooManyAttempts'))
+      else setErr(error instanceof Error ? error.message : String(error))
       setBusy(null)
     }
   }
@@ -191,7 +212,7 @@ export function AuthScreen() {
       style={{ background: 'var(--paper)' }}
     >
       <WindowDragStrip />
-      <div className="w-[320px] flex flex-col items-center gap-8">
+      <div className="w-[340px] flex flex-col items-center gap-7">
         <CloudLogo size={64} />
         <div className="text-center">
           <div className="font-display text-[22px] text-ink-900">{t('auth.welcome')}</div>
@@ -200,6 +221,42 @@ export function AuthScreen() {
           </div>
         </div>
         <div className="w-full flex flex-col gap-3">
+          <form className="flex flex-col gap-2.5" onSubmit={signInWithPassword}>
+            <label className="sr-only" htmlFor="auth-email">{t('auth.email')}</label>
+            <input
+              id="auth-email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              disabled={busy !== null}
+              placeholder={t('auth.email')}
+              className="h-11 rounded-[10px] border border-ink-100 bg-cloud px-3 text-[14px] text-ink-900 placeholder:text-ink-300 outline-none focus:border-skype disabled:opacity-60"
+            />
+            <label className="sr-only" htmlFor="auth-password">{t('auth.password')}</label>
+            <input
+              id="auth-password"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              disabled={busy !== null}
+              placeholder={t('auth.password')}
+              className="h-11 rounded-[10px] border border-ink-100 bg-cloud px-3 text-[14px] text-ink-900 placeholder:text-ink-300 outline-none focus:border-skype disabled:opacity-60"
+            />
+            <button
+              type="submit"
+              disabled={busy !== null || !email.trim() || !password}
+              className="h-11 rounded-[10px] bg-skype hover:bg-skype-deep text-white transition-colors text-[14px] font-medium disabled:opacity-50"
+            >
+              {busy === 'password' ? t('auth.signingIn') : t('auth.signInWithPassword')}
+            </button>
+          </form>
+          <div className="flex items-center gap-3 py-1" aria-hidden="true">
+            <span className="h-px flex-1 bg-ink-100" />
+            <span className="text-[10px] uppercase tracking-[0.16em] text-ink-300">{t('auth.or')}</span>
+            <span className="h-px flex-1 bg-ink-100" />
+          </div>
           {/* Sign in with Apple — iOS-only for now. Apple Review
               Guideline 4.8 requires SIWA be offered as an equivalent
               option whenever an iOS app exposes any third-party

@@ -33,7 +33,27 @@ export function ensureSchemaOnce(): Promise<void> {
 const TABLES_TO_WIPE: readonly string[] = [
   'workspace_cleanup_jobs',
   'realtime_outbox',
+  'auth_attempts',
   'audit_events',
+  'governance_idempotency',
+  'governance_events',
+  'governance_manifests',
+  'governance_reviews',
+  'governance_interventions',
+  'governance_approvals',
+  'governance_operations',
+  'governance_submissions',
+  'shipping_verification_results',
+  'governance_artifact_versions',
+  'governance_budget_reservations',
+  'governance_action_attempts',
+  'governance_actions',
+  'governance_card_claims',
+  'governance_card_plans',
+  'governance_mandates',
+  'governance_budget_accounts',
+  'governance_role_assignments',
+  'governance_roles',
   'llm_calls_rollup',
   'llm_calls',
   'agent_triages',
@@ -98,8 +118,17 @@ export async function resetAllTables(): Promise<void> {
     throw new Error(`refusing to TRUNCATE — DATABASE_URL doesn't look like a test DB: ${env.DATABASE_URL}`)
   }
   await ensureSchemaOnce()
-  for (const t of TABLES_TO_WIPE) {
-    await pool.query(`TRUNCATE TABLE ${t} CASCADE`).catch(() => { /* table may not exist on partial schemas */ })
+  const present = await pool.query<{ tablename: string }>(
+    `SELECT tablename FROM pg_tables WHERE schemaname=current_schema() AND tablename=ANY($1::text[])`,
+    [TABLES_TO_WIPE],
+  )
+  if (present.rows.length) {
+    const allowed = new Set(TABLES_TO_WIPE)
+    const names = present.rows.map(({ tablename }) => {
+      if (!allowed.has(tablename)) throw new Error(`unexpected integration table: ${tablename}`)
+      return `"${tablename.replaceAll('"', '""')}"`
+    })
+    await pool.query(`TRUNCATE TABLE ${names.join(',')} CASCADE`)
   }
 }
 

@@ -43,6 +43,7 @@ import { attachFsEndpoints } from './fs-endpoints.js'
 import { inprocClient } from './inproc-client.js'
 import { type AgentRuntimeClaims, verifyAgentToken } from './jwt.js'
 import { attachWakeStream, } from './wake-bus.js'
+import { pool } from '../../db/pool.js'
 
 export type { WakeEvent } from './wake-bus.js'
 
@@ -166,10 +167,59 @@ attachFsEndpoints(runtimeRouter, withAgent)
 // the same agent-runtime JWT; we *strip* any `--as` the caller passed
 // and inject the token's pinned agentId so a compromised pod can't
 // impersonate another agent.
+runtimeRouter.get('/governance-context/:cardId', withAgent(async (c, req, res) => {
+  const result = await pool.query<any>(`SELECT a.id AS "actionId",at.id AS "attemptId",at.mandate_id AS "mandateId",
+      at.mandate_version AS "mandateVersion",a.plan_epoch AS "planEpoch",at.lease_generation AS "leaseGeneration"
+    FROM governance_actions a JOIN governance_action_attempts at ON at.action_id=a.id
+    JOIN board_cards card ON card.id=a.card_id
+    JOIN governance_mandates m ON m.id=at.mandate_id AND m.mandate_version=at.mandate_version
+    WHERE a.card_id=$1 AND a.company_id=$2 AND at.agent_id=$3 AND card.plan_epoch=a.plan_epoch
+      AND a.state IN ('RUNNING','WAITING_HUMAN') AND at.state IN ('RUNNING','WAITING_HUMAN')
+      AND (at.lease_expires_at IS NULL OR at.lease_expires_at>NOW()) AND m.status='ACTIVE' AND m.valid_until>NOW()
+      AND EXISTS (SELECT 1 FROM governance_role_assignments ra JOIN company_members cm ON cm.company_id=ra.company_id AND cm.user_id=ra.human_user_id WHERE ra.id=m.sponsor_assignment_id AND ra.status='ACTIVE' AND ra.assignment_type='PRIMARY' AND ra.valid_from<=NOW() AND (ra.valid_until IS NULL OR ra.valid_until>NOW()))
+    ORDER BY at.started_at DESC LIMIT 2`, [req.params.cardId, c.companyId, c.sub])
+  if (result.rows.length !== 1) { res.status(409).json({ error: 'exactly one active governed attempt is required', code: 'GOVERNANCE_CONTEXT_UNAVAILABLE' }); return }
+  res.json(result.rows[0])
+}))
+
 runtimeRouter.post('/cli', withAgent(async (c, req, res) => {
-  const body = req.body as { argv?: unknown } | undefined
+  const body = req.body as { argv?: unknown; governanceContext?: { actionId?: unknown; attemptId?: unknown; mandateId?: unknown; mandateVersion?: unknown; planEpoch?: unknown; leaseGeneration?: unknown } } | undefined
   const argv = Array.isArray(body?.argv) ? body!.argv.filter((x): x is string => typeof x === 'string') : null
   if (!argv) { res.status(400).json({ error: 'argv (string[]) required' }); return }
+
+  // Governed writes must carry the complete execution context. Legacy
+  // collaboration cards remain compatible; governed cards fail closed rather
+  // than allowing an old CLI path to mutate them.
+  const cardCommand = argv[0] === 'card' && ['move', 'assign', 'comment', 'rename', 'delete'].includes(argv[1] ?? '')
+  const cardId = cardCommand ? argv[2] : undefined
+  if (cardId) {
+    const row = (await pool.query<any>(`SELECT c.governance_mode,c.governance_state,b.company_id FROM board_cards c JOIN boards b ON b.id=c.board_id WHERE c.id=$1 AND b.company_id=$2`, [cardId, c.companyId])).rows[0]
+    if (row?.governance_mode === 'GOVERNED') {
+      const gc = body?.governanceContext
+      if (!gc?.actionId || !gc.attemptId || !gc.mandateId || !Number.isInteger(gc.mandateVersion) || !Number.isInteger(gc.planEpoch) || !Number.isInteger(gc.leaseGeneration)) {
+        res.status(409).json({ error: 'governance execution context required', code: 'GOVERNANCE_CONTEXT_REQUIRED' }); return
+      }
+      const auth = (await pool.query<any>(`SELECT a.card_id,a.plan_epoch,at.agent_id,at.lease_generation,at.state,at.lease_expires_at,m.id AS mandate_id,m.mandate_version
+        FROM governance_actions a JOIN governance_action_attempts at ON at.action_id=a.id
+        JOIN governance_mandates m ON m.id=at.mandate_id AND m.mandate_version=at.mandate_version
+        JOIN board_cards c ON c.id=a.card_id
+        WHERE a.id=$1 AND at.id=$2 AND a.card_id=$3 AND a.company_id=$4 AND at.agent_id=$5
+          AND a.plan_epoch=$6 AND at.lease_generation=$7 AND at.state IN ('RUNNING','WAITING_HUMAN')
+          AND a.state IN ('RUNNING','WAITING_HUMAN') AND c.plan_epoch=a.plan_epoch
+          AND m.card_id=a.card_id AND m.agent_id=at.agent_id AND m.status='ACTIVE' AND m.valid_until>NOW()
+          AND EXISTS (SELECT 1 FROM governance_role_assignments ra JOIN company_members cm ON cm.company_id=ra.company_id AND cm.user_id=ra.human_user_id WHERE ra.id=m.sponsor_assignment_id AND ra.status='ACTIVE' AND ra.assignment_type='PRIMARY' AND ra.valid_from<=NOW() AND (ra.valid_until IS NULL OR ra.valid_until>NOW()))
+          AND a.permission_snapshot @> $8::jsonb`, [gc.actionId, gc.attemptId, cardId, c.companyId, c.sub, gc.planEpoch, gc.leaseGeneration,
+            JSON.stringify([{ resourceType: 'CARD', resourceId: cardId, operation: `card.${argv[1]}` }])])).rows[0]
+      if (!auth || auth.mandate_id !== gc.mandateId || auth.mandate_version !== gc.mandateVersion || (auth.lease_expires_at && new Date(auth.lease_expires_at).getTime() <= Date.now())) {
+        res.status(409).json({ error: 'invalid or expired governance execution context', code: 'GOVERNANCE_CONTEXT_INVALID' }); return
+      }
+      if (argv[1] === 'move') {
+        const target = argv[4] ?? argv[3]
+        const col = (await pool.query<{ kind: string }>('SELECT kind FROM board_columns WHERE id=$1 AND board_id=(SELECT board_id FROM board_cards WHERE id=$2)', [target, cardId])).rows[0]
+        if (col?.kind === 'done' && row.governance_state !== 'DONE') { res.status(409).json({ error: 'finalize_submission is the only governed Done transition', code: 'FINALIZE_REQUIRED' }); return }
+      }
+    }
+  }
 
   // Drop any client-supplied `--as <id>` / `--as=<id>` — the JWT pins
   // identity, and we prepend `--as <jwt.sub>` so runCli resolves to the
@@ -424,6 +474,7 @@ runtimeRouter.post('/runs', withAgent(async (c, req, res) => {
     inputMessageIds?: string[]
     inboxCount?: number
     fingerprint?: string
+    governanceAttemptId?: string
   } | undefined
   if ((body !== undefined && !isPlainRecord(body))
     || (body?.trigger !== undefined && !isPlainRecord(body.trigger))
@@ -432,6 +483,10 @@ runtimeRouter.post('/runs', withAgent(async (c, req, res) => {
     || (body?.inboxCount !== undefined && !isNonNegativePgInteger(body.inboxCount))
     || (body?.fingerprint !== undefined && typeof body.fingerprint !== 'string')) {
     res.status(400).json({ error: 'invalid run payload' }); return
+  }
+  if (body?.governanceAttemptId) {
+    const valid = await pool.query(`SELECT 1 FROM governance_action_attempts at JOIN governance_actions a ON a.id=at.action_id JOIN board_cards c ON c.id=a.card_id JOIN governance_mandates m ON m.id=at.mandate_id AND m.mandate_version=at.mandate_version WHERE at.id=$1 AND at.company_id=$2 AND at.agent_id=$3 AND at.state IN ('RUNNING','WAITING_HUMAN') AND (at.lease_expires_at IS NULL OR at.lease_expires_at>NOW()) AND a.plan_epoch=c.plan_epoch AND m.status='ACTIVE' AND m.valid_until>NOW() AND EXISTS (SELECT 1 FROM governance_role_assignments ra JOIN company_members cm ON cm.company_id=ra.company_id AND cm.user_id=ra.human_user_id WHERE ra.id=m.sponsor_assignment_id AND ra.status='ACTIVE' AND ra.assignment_type='PRIMARY' AND ra.valid_from<=NOW() AND (ra.valid_until IS NULL OR ra.valid_until>NOW()))`, [body.governanceAttemptId, c.companyId, c.sub])
+    if (!valid.rows[0]) { res.status(409).json({ error: 'governance attempt is invalid or stale' }); return }
   }
   const gate = await withRuntimeAgentRunAuthorization({
     agentId: c.sub,
@@ -444,12 +499,39 @@ runtimeRouter.post('/runs', withAgent(async (c, req, res) => {
       inputMessageIds: body?.inputMessageIds,
       inboxCount: body?.inboxCount,
       fingerprint: body?.fingerprint,
+      governanceAttemptId: body?.governanceAttemptId,
     }, client),
   })
   if (!gate.authorized || !gate.result) {
     res.status(403).json({ error: 'agent does not belong to token tenant' }); return
   }
   res.json({ runId: gate.result })
+}))
+
+runtimeRouter.post('/model-calls/authorize', withAgent(async (c, req, res) => {
+  const body = req.body as { runId?: string; providerCallId?: string; model?: string; maxInputTokens?: number; maxOutputTokens?: number }
+  if (!body || typeof body.runId !== 'string' || typeof body.providerCallId !== 'string' || typeof body.model !== 'string' || !isNonNegativePgInteger(body.maxInputTokens) || !isNonNegativePgInteger(body.maxOutputTokens)) {
+    res.status(400).json({ error: 'invalid governed model-call authorization payload' }); return
+  }
+  try {
+    const { authorizeGovernedModelCall } = await import('../../governance/runtime-budget.js')
+    res.json(await authorizeGovernedModelCall(pool, { runId: body.runId, agentId: c.sub, companyId: c.companyId, providerCallId: body.providerCallId, model: body.model, maxInputTokens: body.maxInputTokens, maxOutputTokens: body.maxOutputTokens }))
+  } catch (error) {
+    res.status(409).json({ error: error instanceof Error ? error.message : 'governance budget authorization failed', code: (error as { code?: string }).code })
+  }
+}))
+
+runtimeRouter.post('/model-calls/settle', withAgent(async (c, req, res) => {
+  const body = req.body as { runId?: string; providerCallId?: string; usage?: import('./client.js').RuntimeTokenUsage }
+  if (!body || typeof body.runId !== 'string' || typeof body.providerCallId !== 'string' || !isRuntimeTokenUsage(body.usage)) {
+    res.status(400).json({ error: 'invalid governed model-call settlement payload' }); return
+  }
+  try {
+    const { settleGovernedModelCall } = await import('../../governance/runtime-budget.js')
+    res.json(await settleGovernedModelCall(pool, { runId: body.runId, agentId: c.sub, companyId: c.companyId, providerCallId: body.providerCallId, usage: { inputTokens: body.usage.inputTokens ?? 0, cachedInputTokens: body.usage.cachedInputTokens ?? 0, cacheCreationTokens: body.usage.cacheCreationTokens ?? 0, outputTokens: body.usage.outputTokens ?? 0 } }))
+  } catch (error) {
+    res.status(409).json({ error: error instanceof Error ? error.message : 'governance budget settlement failed', code: (error as { code?: string }).code })
+  }
 }))
 
 runtimeRouter.post('/events', withAgent(async (c, req, res) => {
@@ -648,7 +730,11 @@ runtimeRouter.post('/llm-calls', withAgent(async (c, req, res) => {
     agentId: c.sub,
     companyId: c.companyId,
     runIds,
-    task: (client) => recordLlmCallsBatch(records, client),
+    task: async (client) => {
+      const linked = runIds.length ? await client.query<{ id: string; governance_attempt_id: string | null }>(`SELECT id,governance_attempt_id FROM agent_runs WHERE id=ANY($1::text[])`, [runIds]) : { rows: [] }
+      const byRun = new Map(linked.rows.map((row) => [row.id, row.governance_attempt_id]))
+      await recordLlmCallsBatch(records.map((record) => ({ ...record, governanceAttemptId: record.runId ? byRun.get(record.runId) ?? null : null })), client)
+    },
   })
   if (!gate.authorized) { res.status(404).json({ error: 'agent run not found' }); return }
   res.json({ ok: true, inserted: hops.length })
