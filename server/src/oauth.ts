@@ -440,11 +440,20 @@ export async function findOrCreateUserByProfile(
     // to the email's ownership (Google: email_verified=true; GitHub: primary
     // && verified). If we already have a user with that email, link.
     {
-      const r = await client.query<{ id: string }>(
-        `SELECT id FROM users WHERE LOWER(email) = $1 LIMIT 1`, [profile.email],
+      const r = await client.query<{ id: string; email_verified_at: string | null }>(
+        `SELECT id,email_verified_at FROM users WHERE LOWER(email) = $1 LIMIT 1 FOR UPDATE`, [profile.email],
       )
       const existing = r.rows[0]?.id
       if (existing) {
+        // A public password registration does not prove control of its email.
+        // A verified OAuth provider does. When it claims the same address,
+        // promote the email to verified and revoke every older session before
+        // linking. This prevents an email squatter from retaining access after
+        // the legitimate mailbox owner signs in through Google/GitHub/GitLab.
+        if (!r.rows[0].email_verified_at) {
+          await client.query(`UPDATE users SET email_verified_at=NOW() WHERE id=$1`, [existing])
+          await client.query(`DELETE FROM sessions WHERE user_id=$1`, [existing])
+        }
         await client.query(
           `INSERT INTO user_identities (provider, provider_id, user_id, email_lower)
              VALUES ($1, $2, $3, $4)

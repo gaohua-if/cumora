@@ -833,6 +833,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(input),
     }),
+  authPasswordRegister: (input: { displayName: string; email: string; password: string }) =>
+    http<{ token: string; expiresAt: string; user: { id: string; email: string; displayName: string; emailVerified: boolean }; companyId: string }>('/auth/password/register', {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
   setAccountPassword: (input: { currentPassword?: string; newPassword: string }) =>
     http<{ ok: boolean; hasPassword: boolean }>('/auth/password', {
       method: 'PUT',

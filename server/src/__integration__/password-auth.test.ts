@@ -32,6 +32,9 @@ before(async () => {
 beforeEach(async () => {
   await resetAllTables()
   await pool.query(
+    `UPDATE app_settings SET value='false'::jsonb WHERE key IN ('waitlist_enabled','signups_paused')`,
+  )
+  await pool.query(
     `INSERT INTO companies (id,name,slug,owner_user_id) VALUES ($1,'Password Test',$1,$2)`,
     [COMPANY_ID, USER_ID],
   )
@@ -55,6 +58,64 @@ test('[integration] password hash round-trips and rejects malformed hashes', asy
   assert.equal(await verifyPassword('wrong password', encoded), false)
   assert.equal(await verifyPassword(PASSWORD, null), false)
   assert.equal(await verifyPassword(PASSWORD, 'not-a-password-hash'), false)
+})
+
+test('[integration] public password registration creates an unverified account, workspace and session', async () => {
+  const registeredEmail = 'new.password.user@example.test'
+  const response = await fetch(`${baseUrl}/api/auth/password/register`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      displayName: 'New Password User',
+      email: registeredEmail.toUpperCase(),
+      password: PASSWORD,
+    }),
+  })
+  assert.equal(response.status, 201)
+  const body = await response.json() as {
+    token: string; companyId: string
+    user: { id: string; email: string; displayName: string; emailVerified: boolean }
+  }
+  assert.equal(body.user.email, registeredEmail)
+  assert.equal(body.user.displayName, 'New Password User')
+  assert.equal(body.user.emailVerified, false)
+  assert.equal((await resolveSession(body.token))?.userId, body.user.id)
+
+  const persisted = await pool.query<{
+    password_hash: string | null; email_verified_at: string | null; role: string
+  }>(
+    `SELECT u.password_hash,u.email_verified_at,cm.role
+       FROM users u JOIN company_members cm ON cm.user_id=u.id
+      WHERE u.id=$1 AND cm.company_id=$2`,
+    [body.user.id, body.companyId],
+  )
+  assert.match(persisted.rows[0]?.password_hash ?? '', /^scrypt:/)
+  assert.equal(persisted.rows[0]?.email_verified_at, null)
+  assert.equal(persisted.rows[0]?.role, 'owner')
+
+  const duplicate = await fetch(`${baseUrl}/api/auth/password/register`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ displayName: 'Duplicate', email: registeredEmail, password: PASSWORD }),
+  })
+  assert.equal(duplicate.status, 409)
+})
+
+test('[integration] signup controls reject password registration when paused or waitlisted', async () => {
+  await pool.query(`UPDATE app_settings SET value='true'::jsonb WHERE key='signups_paused'`)
+  const paused = await fetch(`${baseUrl}/api/auth/password/register`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ displayName: 'Paused', email: 'paused@example.test', password: PASSWORD }),
+  })
+  assert.equal(paused.status, 503)
+
+  await pool.query(`UPDATE app_settings SET value='false'::jsonb WHERE key='signups_paused'`)
+  await pool.query(`UPDATE app_settings SET value='true'::jsonb WHERE key='waitlist_enabled'`)
+  const waitlisted = await fetch(`${baseUrl}/api/auth/password/register`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ displayName: 'Waitlisted', email: 'waitlisted@example.test', password: PASSWORD }),
+  })
+  assert.equal(waitlisted.status, 403)
 })
 
 test('[integration] an existing account can sign in with email and password', async () => {
