@@ -1,6 +1,6 @@
 /**
- * Sign-in screen — OAuth only (Google + GitHub). No password forms, no
- * signup, no forgot. Provider buttons trigger a full-page redirect to
+ * Sign-in screen — email/password plus OAuth providers. Provider buttons
+ * trigger a full-page redirect to
  * /api/auth/start/<provider> on the configured server origin (relative
  * URL goes through the Vite proxy in dev; baked-in absolute URL in
  * packaged builds). The provider returns to /auth/done with a fragment
@@ -11,8 +11,8 @@
  * picking the server is a sign-in-time decision — the auth token is
  * per-server.
  */
-import { useState, useEffect } from 'react'
-import { api, getPairingServerOrigin, getServerOrigin, setServerOrigin } from '@/api/client'
+import { useState, useEffect, type FormEvent } from 'react'
+import { ApiError, api, getPairingServerOrigin, getServerOrigin, setServerOrigin } from '@/api/client'
 import { isCapacitorIOS, isElectron } from '@/lib/runtime'
 import { isNativePlatform, nativePlatform, runAppleSignIn, runOAuth } from '@/lib/native'
 import { useAuth } from '@/stores/auth'
@@ -33,7 +33,12 @@ const PRESET_LABEL_KEY: Record<string, MessageKey> = {
 
 export function AuthScreen() {
   const t = useT()
-  const [busy, setBusy] = useState<'google' | 'github' | 'gitlab' | 'apple' | null>(null)
+  const [busy, setBusy] = useState<'password' | 'google' | 'github' | 'gitlab' | 'apple' | null>(null)
+  const [mode, setMode] = useState<'login' | 'register'>('login')
+  const [displayName, setDisplayName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   // GitLab is opt-in and can point at a self-managed instance, so most
   // deployments have no credentials for it — ask the server rather than
   // offering a button that can only 503.
@@ -101,6 +106,42 @@ export function AuthScreen() {
       } else {
         setErr(msg)
       }
+      setBusy(null)
+    }
+  }
+
+  async function submitPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!email.trim() || !password) return
+    if (mode === 'register') {
+      if (!displayName.trim()) { setErr(t('auth.nameRequired')); return }
+      if (password.length < 12) { setErr(t('auth.passwordTooShort')); return }
+      if (password !== confirmPassword) { setErr(t('auth.passwordMismatch')); return }
+    }
+    setBusy('password'); setErr(null)
+    try {
+      const r = mode === 'register'
+        ? await api.authPasswordRegister({ displayName: displayName.trim(), email: email.trim(), password })
+        : await api.authPasswordLogin({ email: email.trim(), password })
+      useAuth.getState().setSession(
+        r.token,
+        {
+          id: r.user.id,
+          email: r.user.email,
+          name: r.user.displayName,
+          emailVerified: mode === 'register' ? false : undefined,
+          hasPassword: true,
+          providers: [],
+        },
+        r.companyId,
+      )
+    } catch (error) {
+      if (mode === 'login' && error instanceof ApiError && error.status === 401) setErr(t('auth.invalidCredentials'))
+      else if (error instanceof ApiError && error.status === 429) setErr(t('auth.tooManyAttempts'))
+      else if (mode === 'register' && error instanceof ApiError && error.status === 409) setErr(t('auth.emailAlreadyRegistered'))
+      else if (mode === 'register' && error instanceof ApiError && error.status === 403) setErr(t('auth.registrationApprovalRequired'))
+      else if (mode === 'register' && error instanceof ApiError && error.status === 503) setErr(t('auth.registrationPaused'))
+      else setErr(error instanceof Error ? error.message : String(error))
       setBusy(null)
     }
   }
@@ -191,15 +232,95 @@ export function AuthScreen() {
       style={{ background: 'var(--paper)' }}
     >
       <WindowDragStrip />
-      <div className="w-[320px] flex flex-col items-center gap-8">
+      <div className="w-[340px] flex flex-col items-center gap-7">
         <CloudLogo size={64} />
         <div className="text-center">
           <div className="font-display text-[22px] text-ink-900">{t('auth.welcome')}</div>
           <div className="font-display italic text-[13px] text-ink-400 mt-1">
-            {t('auth.signInToContinue')}
+            {mode === 'login' ? t('auth.signInToContinue') : t('auth.createAccountSubtitle')}
           </div>
         </div>
         <div className="w-full flex flex-col gap-3">
+          <form className="flex flex-col gap-2.5" onSubmit={submitPassword}>
+            {mode === 'register' && (
+              <>
+                <label className="sr-only" htmlFor="auth-name">{t('auth.displayName')}</label>
+                <input
+                  id="auth-name"
+                  type="text"
+                  autoComplete="name"
+                  value={displayName}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  disabled={busy !== null}
+                  placeholder={t('auth.displayName')}
+                  maxLength={100}
+                  className="h-11 rounded-[10px] border border-ink-100 bg-cloud px-3 text-[14px] text-ink-900 placeholder:text-ink-300 outline-none focus:border-skype disabled:opacity-60"
+                />
+              </>
+            )}
+            <label className="sr-only" htmlFor="auth-email">{t('auth.email')}</label>
+            <input
+              id="auth-email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              disabled={busy !== null}
+              placeholder={t('auth.email')}
+              className="h-11 rounded-[10px] border border-ink-100 bg-cloud px-3 text-[14px] text-ink-900 placeholder:text-ink-300 outline-none focus:border-skype disabled:opacity-60"
+            />
+            <label className="sr-only" htmlFor="auth-password">{t('auth.password')}</label>
+            <input
+              id="auth-password"
+              type="password"
+              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              disabled={busy !== null}
+              placeholder={t('auth.password')}
+              className="h-11 rounded-[10px] border border-ink-100 bg-cloud px-3 text-[14px] text-ink-900 placeholder:text-ink-300 outline-none focus:border-skype disabled:opacity-60"
+            />
+            {mode === 'register' && (
+              <>
+                <label className="sr-only" htmlFor="auth-password-confirm">{t('auth.confirmPassword')}</label>
+                <input
+                  id="auth-password-confirm"
+                  type="password"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  disabled={busy !== null}
+                  placeholder={t('auth.confirmPassword')}
+                  className="h-11 rounded-[10px] border border-ink-100 bg-cloud px-3 text-[14px] text-ink-900 placeholder:text-ink-300 outline-none focus:border-skype disabled:opacity-60"
+                />
+              </>
+            )}
+            <button
+              type="submit"
+              disabled={busy !== null || !email.trim() || !password || (mode === 'register' && (!displayName.trim() || !confirmPassword))}
+              className="h-11 rounded-[10px] bg-skype hover:bg-skype-deep text-white transition-colors text-[14px] font-medium disabled:opacity-50"
+            >
+              {busy === 'password'
+                ? (mode === 'login' ? t('auth.signingIn') : t('auth.creatingAccount'))
+                : (mode === 'login' ? t('auth.signInWithPassword') : t('auth.createAccount'))}
+            </button>
+            <button
+              type="button"
+              disabled={busy !== null}
+              onClick={() => {
+                setMode((current) => current === 'login' ? 'register' : 'login')
+                setErr(null); setPassword(''); setConfirmPassword('')
+              }}
+              className="text-[12px] text-skype-deep hover:underline disabled:opacity-50"
+            >
+              {mode === 'login' ? t('auth.needAccount') : t('auth.haveAccount')}
+            </button>
+          </form>
+          <div className="flex items-center gap-3 py-1" aria-hidden="true">
+            <span className="h-px flex-1 bg-ink-100" />
+            <span className="text-[10px] uppercase tracking-[0.16em] text-ink-300">{t('auth.or')}</span>
+            <span className="h-px flex-1 bg-ink-100" />
+          </div>
           {/* Sign in with Apple — iOS-only for now. Apple Review
               Guideline 4.8 requires SIWA be offered as an equivalent
               option whenever an iOS app exposes any third-party

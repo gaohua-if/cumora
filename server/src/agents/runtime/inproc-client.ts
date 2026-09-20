@@ -576,8 +576,19 @@ export class InProcRuntimeClient implements AgentRuntimeClient {
     inputMessageIds?: string[]
     inboxCount?: number
     fingerprint?: string
+    governanceAttemptId?: string
   }): Promise<string> {
     return createAgentRun(args)
+  }
+
+  async authorizeModelCall(args: { runId: string; agentId: string; companyId: string; providerCallId: string; model: string; maxInputTokens: number; maxOutputTokens: number }) {
+    const { authorizeGovernedModelCall } = await import('../../governance/runtime-budget.js')
+    return authorizeGovernedModelCall(pool, args)
+  }
+
+  async settleModelCall(args: { runId: string; agentId: string; companyId: string; providerCallId: string; usage: RuntimeTokenUsage }) {
+    const { settleGovernedModelCall } = await import('../../governance/runtime-budget.js')
+    return settleGovernedModelCall(pool, { ...args, usage: { inputTokens: args.usage.inputTokens ?? 0, cachedInputTokens: args.usage.cachedInputTokens ?? 0, cacheCreationTokens: args.usage.cacheCreationTokens ?? 0, outputTokens: args.usage.outputTokens ?? 0 } })
   }
 
   async recordEvent(event: {

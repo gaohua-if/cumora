@@ -17,6 +17,8 @@
  * no targets, an @all, a model error, an unparseable answer — resolves to
  * today's full fan-out.
  */
+import { env } from '../env.js'
+import { enforceModelPolicy } from './model-policy.js'
 import type { ResponseMode } from './triage-core.js'
 
 /** `@all` is a broadcast: it must never be narrowed, whatever else the message
@@ -108,15 +110,16 @@ export async function routeMessage(args: {
   conversationKind: string
   candidates: readonly string[]
   targets: readonly string[]
+  /** Trusted internal override; normal deployments use MESSAGE_ROUTING_MODEL. */
+  model?: string
 }): Promise<ResponseMode> {
   const req = buildRouteRequest(args)
   if (req.mode) return req.mode
   try {
     const { getTrackedLlmClient } = await import('./llm-ledger.js')
-    const { supportModel } = await import('./model-policy.js')
     const client = await getTrackedLlmClient({ purpose: 'message-routing', companyId: args.companyId })
     const r = await client.responses.create({
-      model: supportModel(),
+      model: enforceModelPolicy(args.model ?? env.MESSAGE_ROUTING_MODEL, 'message-routing'),
       instructions: req.instructions,
       input: req.input ?? '',
       max_output_tokens: 200,

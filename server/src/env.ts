@@ -32,6 +32,7 @@ const DEV_AGENT_RUNTIME_SECRET = 'dev-agent-runtime-secret-do-not-use-in-prod'
 export const env = {
   PORT: Number(process.env.PORT ?? 5181),
   NODE_ENV: process.env.NODE_ENV ?? 'development',
+  GOVERNANCE_UPGRADES_ENABLED: !/^(false|0|no|off)$/i.test(process.env.GOVERNANCE_UPGRADES_ENABLED ?? ''),
   DATABASE_URL: required('DATABASE_URL', `postgres://${process.env.USER ?? 'postgres'}@localhost:5432/cumora`),
   REDIS_URL: required('REDIS_URL', 'redis://localhost:6379'),
   OPENAI_API_KEY: required('OPENAI_API_KEY'),
@@ -49,6 +50,11 @@ export const env = {
    * unconfigured deployments still split brain/cerebellum.
    */
   OPENAI_MODEL_SUPPORT: DEFAULT_SUPPORT_MODEL,
+  /** Independently configurable auxiliary workloads. Both inherit the shared
+   *  support model unless overridden. A `deepseek/<model>` value routes only
+   *  that workload through the DeepSeek provider. */
+  AGENDA_CLASSIFIER_MODEL: process.env.AGENDA_CLASSIFIER_MODEL ?? DEFAULT_SUPPORT_MODEL,
+  MESSAGE_ROUTING_MODEL: process.env.MESSAGE_ROUTING_MODEL ?? DEFAULT_SUPPORT_MODEL,
   /**
    * "Cerebellum" summarizer — used by auto-compaction summarizer,
    * verifyTerminalCompletion, and the mid-turn steer-batch summarizer.
@@ -79,6 +85,11 @@ export const env = {
    *  Responses API natively, so the `orcarouter/<model>` route is a pure
    *  base-URL swap (no Chat-Completions translation, unlike Novita). */
   ORCAROUTER_BASE_URL: (process.env.ORCAROUTER_BASE_URL ?? 'https://api.orcarouter.ai/v1').replace(/\/+$/, ''),
+  /** Optional dedicated DeepSeek key. `deepseek/*` calls fall back to the
+   *  required OPENAI_API_KEY when this is unset, which supports deployments
+   *  that use OPENAI_API_KEY as their single OpenAI-compatible provider key. */
+  DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY ?? '',
+  DEEPSEEK_BASE_URL: (process.env.DEEPSEEK_BASE_URL ?? 'https://api.deepseek.com').replace(/\/+$/, ''),
   /**
    * Webhook URL for process-level alerts (unhandledRejection /
    * uncaughtException). Currently expects a Discord-compatible

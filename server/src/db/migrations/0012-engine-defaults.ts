@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 
 /**
- * Migration 0007: per-engine default model settings on Computers.
+ * Migration 0012: per-engine default model settings on Computers.
  *
  * Cumora users with custom provider endpoints (CC Switch and friends) need a
  * per-engine model policy: which main + fast model each local CLI should run

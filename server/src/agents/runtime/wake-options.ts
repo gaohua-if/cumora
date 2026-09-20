@@ -44,6 +44,7 @@ export function parseWakeData(raw: string | undefined): ParsedWakeData {
       triageNote?: unknown
       backgroundBrief?: unknown
       pollBrief?: unknown
+      governanceAttemptId?: unknown
     }
     const envelope = {
       conversationId: typeof parsed.conversationId === 'string'
@@ -61,6 +62,7 @@ export function parseWakeData(raw: string | undefined): ParsedWakeData {
     ) return { ...envelope, options: {} }
 
     const options: AgentTurnOptions = { trigger: reason }
+    if (typeof parsed.governanceAttemptId === 'string' && /^[A-Za-z0-9_.:-]{1,200}$/.test(parsed.governanceAttemptId)) options.governanceAttemptId = parsed.governanceAttemptId
     if (reason === 'idle' && typeof parsed.idleReason === 'string') {
       options.idleReason = parsed.idleReason.slice(0, 500)
     }

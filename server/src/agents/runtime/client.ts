@@ -314,7 +314,14 @@ export interface AgentRuntimeClient {
     inputMessageIds?: string[]
     inboxCount?: number
     fingerprint?: string
+    governanceAttemptId?: string
   }): Promise<string>
+  authorizeModelCall(args: {
+    runId: string; agentId: string; companyId: string; providerCallId: string; model: string; maxInputTokens: number; maxOutputTokens: number
+  }): Promise<{ reservationId: string; amountMicrousd: number } | null>
+  settleModelCall(args: {
+    runId: string; agentId: string; companyId: string; providerCallId: string; usage: RuntimeTokenUsage
+  }): Promise<{ actualAmountMicrousd: number; budgetFrozen: boolean } | null>
   /** Append one event to agent_events for live observability. */
   recordEvent(event: {
     runId: string

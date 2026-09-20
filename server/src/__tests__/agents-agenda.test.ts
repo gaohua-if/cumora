@@ -4,18 +4,19 @@
  * cover the done-column regex and the two render helpers, which are
  * the only places a mistake silently degrades the heartbeat path.
  */
-import { test, after, afterEach } from 'node:test'
+
 import assert from 'node:assert/strict'
+import { after, afterEach, test } from 'node:test'
 import {
-  renderAgendaBrief,
+  __test,
+  AGENDA_CLASSIFIER_ERROR,
+  type AgentAgenda,
   classifyAgendaActionable,
   parseAgendaVerdict,
-  AGENDA_CLASSIFIER_ERROR,
-  __test,
-  type AgentAgenda,
+  renderAgendaBrief,
 } from '../agents/agenda.js'
-import { __setLlmClientOverrideForTesting } from '../llm.js'
 import { pool } from '../db/pool.js'
+import { __setLlmClientOverrideForTesting } from '../llm.js'
 
 const { DONE_COLUMN_PATTERNS, renderAgendaForClassifier } = __test
 
@@ -372,6 +373,27 @@ test('classifyAgendaActionable leaves output headroom beyond reasoning tokens', 
     persona: STUB_PERSONA, companyId: 'c1', agenda: SINGLE_CARD_AGENDA,
   })
   assert.ok(maxOutputTokens >= 2_000, 'live support-model reasoning exceeded 800 tokens before emitting JSON')
+})
+
+test('classifyAgendaActionable accepts a trusted per-call model override', async () => {
+  let capturedModel = ''
+  __setLlmClientOverrideForTesting((async () => ({
+    responses: {
+      create: async (request: { model?: string }) => {
+        capturedModel = request.model ?? ''
+        return { output_text: JSON.stringify({ actionable: false, focus: '', reason: 'done' }) }
+      },
+    },
+  })) as unknown as Parameters<typeof __setLlmClientOverrideForTesting>[0])
+
+  await classifyAgendaActionable({
+    persona: STUB_PERSONA,
+    companyId: 'c1',
+    agenda: SINGLE_CARD_AGENDA,
+    model: 'deepseek/deepseek-flash',
+  })
+
+  assert.equal(capturedModel, 'deepseek/deepseek-flash')
 })
 
 test('classifyAgendaActionable: happy path with strict boolean true', async () => {

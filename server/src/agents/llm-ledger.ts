@@ -86,6 +86,7 @@ export interface LlmCallContext {
   agentId?: string | null
   runId?: string | null
   conversationId?: string | null
+  governanceAttemptId?: string | null
   /** Free-form purpose-specific labels (e.g. compaction's `historyTokensBefore`,
    *  triage's `actionable`). Goes into the `extras` JSONB column. */
   extras?: Record<string, unknown>
@@ -117,7 +118,7 @@ const LLM_CALL_COLUMNS = `
   input_tokens, cached_input_tokens, cache_creation_tokens,
   output_tokens, reasoning_tokens,
   cost_usd, cost_estimated, measured,
-  latency_ms, status, error, extras, daemon_version
+  latency_ms, status, error, extras, daemon_version, governance_attempt_id
 `
 
 function llmCallValues(rec: LlmCallRecord): unknown[] {
@@ -137,14 +138,14 @@ function llmCallValues(rec: LlmCallRecord): unknown[] {
     rec.latencyMs, rec.status,
     rec.error ? rec.error.slice(0, 500) : null,
     rec.extras ? JSON.stringify(rec.extras) : null,
-    rec.daemonVersion ?? null,
+    rec.daemonVersion ?? null, rec.governanceAttemptId ?? null,
   ]
 }
 
 async function insertLlmCall(rec: LlmCallRecord): Promise<void> {
   await pool.query(
     `INSERT INTO llm_calls (${LLM_CALL_COLUMNS})
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20::jsonb,$21)`,
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20::jsonb,$21,COALESCE($22,(SELECT governance_attempt_id FROM agent_runs WHERE id=$4)))`,
     llmCallValues(rec),
   )
 }
@@ -169,10 +170,12 @@ export async function recordLlmCallsBatch(
   if (records.length === 0) return
   const values = records.flatMap(llmCallValues)
   const rows = records.map((_, rowIndex) => {
-    const offset = rowIndex * 21
-    return `(${Array.from({ length: 21 }, (_value, columnIndex) => {
+    const offset = rowIndex * 22
+    return `(${Array.from({ length: 22 }, (_value, columnIndex) => {
       const placeholder = `$${offset + columnIndex + 1}`
-      return columnIndex === 19 ? `${placeholder}::jsonb` : placeholder
+      if (columnIndex === 19) return `${placeholder}::jsonb`
+      if (columnIndex === 21) return `COALESCE(${placeholder},(SELECT governance_attempt_id FROM agent_runs WHERE id=$${offset + 4}))`
+      return placeholder
     }).join(',')})`
   })
   await client.query(

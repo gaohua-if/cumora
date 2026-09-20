@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 
 /**
- * Migration 0009: elect one agent for unaddressed human group messages (#123).
+ * Migration 0014: elect one agent for unaddressed human group messages (#123).
  *
  * One row per one-of-us ROUTING ELECTION (#70). When a human group message
  * names nobody and the small-model router elects ONE agent to take the turn

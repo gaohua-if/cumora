@@ -280,4 +280,3 @@ test('the sweep anchors hasRunSince to cursorAdvancedAt rather than claim create
   assert.ok(passedSince)
   assert.equal(passedSince.getTime(), candidateAdvanced.getTime())
 })
-

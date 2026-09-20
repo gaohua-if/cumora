@@ -5,7 +5,6 @@
  * Application replicas use the read-only compatibility gate in
  * schema-version.ts and never execute DDL while starting.
  */
-import { AGENT_PROVIDER_PROFILE_SQL, agentProviderProfileChecksum } from './migrations/0008-agent-provider-profile.js'
 import { createHash } from 'node:crypto'
 import { pool } from './pool.js'
 import {
@@ -39,13 +38,28 @@ import {
   emailMessagesCompanySmtpIdChecksum,
 } from './migrations/0006-email-messages-company-smtp-id.js'
 import {
-  ENGINE_DEFAULTS_SQL,
-  engineDefaultsChecksum,
-} from './migrations/0007-engine-defaults.js'
+  ORGANIZATIONAL_GOVERNANCE_SQL,
+  organizationalGovernanceChecksum,
+} from './migrations/0007-organizational-governance.js'
 import {
-  AGENT_ROUTING_CLAIMS_SQL,
-  agentRoutingClaimsChecksum,
-} from './migrations/0009-agent-routing-claims.js'
+  GOVERNANCE_IDEMPOTENCY_SQL,
+  governanceIdempotencyChecksum,
+} from './migrations/0008-governance-idempotency.js'
+import {
+  GOVERNANCE_INVARIANTS_SQL,
+  governanceInvariantsChecksum,
+} from './migrations/0009-governance-invariants.js'
+import {
+  GOVERNANCE_BUDGET_SETTLEMENT_SQL,
+  governanceBudgetSettlementChecksum,
+} from './migrations/0010-governance-budget-settlement.js'
+import {
+  GOVERNANCE_MEMBERSHIP_HISTORY_SQL,
+  governanceMembershipHistoryChecksum,
+} from './migrations/0011-governance-membership-history.js'
+import { ENGINE_DEFAULTS_SQL, engineDefaultsChecksum } from './migrations/0012-engine-defaults.js'
+import { AGENT_PROVIDER_PROFILE_SQL, agentProviderProfileChecksum } from './migrations/0013-agent-provider-profile.js'
+import { AGENT_ROUTING_CLAIMS_SQL, agentRoutingClaimsChecksum } from './migrations/0014-agent-routing-claims.js'
 
 /** Frozen data backfill embedded in migration 0001. Exported so its behavior
  * can be exercised against PostgreSQL without replaying the whole migration. */
@@ -2551,6 +2565,26 @@ async function applyEmailMessagesCompanySmtpId(client: import('pg').PoolClient):
   await client.query(DROP_LEGACY_EMAIL_MESSAGES_SMTP_ID_SQL)
 }
 
+async function applyOrganizationalGovernance(client: import('pg').PoolClient): Promise<void> {
+  await client.query(ORGANIZATIONAL_GOVERNANCE_SQL)
+}
+
+async function applyGovernanceIdempotency(client: import('pg').PoolClient): Promise<void> {
+  await client.query(GOVERNANCE_IDEMPOTENCY_SQL)
+}
+
+async function applyGovernanceInvariants(client: import('pg').PoolClient): Promise<void> {
+  await client.query(GOVERNANCE_INVARIANTS_SQL)
+}
+
+async function applyGovernanceBudgetSettlement(client: import('pg').PoolClient): Promise<void> {
+  await client.query(GOVERNANCE_BUDGET_SETTLEMENT_SQL)
+}
+
+async function applyGovernanceMembershipHistory(client: import('pg').PoolClient): Promise<void> {
+  await client.query(GOVERNANCE_MEMBERSHIP_HISTORY_SQL)
+}
+
 async function applyEngineDefaults(client: import('pg').PoolClient): Promise<void> {
   await client.query(ENGINE_DEFAULTS_SQL)
 }
@@ -2600,18 +2634,48 @@ const VERSIONED_MIGRATIONS: readonly VersionedMigration[] = [
   },
   {
     ...SCHEMA_MIGRATIONS[6],
+    sourceChecksum: organizationalGovernanceChecksum(),
+    transactional: true,
+    up: applyOrganizationalGovernance,
+  },
+  {
+    ...SCHEMA_MIGRATIONS[7],
+    sourceChecksum: governanceIdempotencyChecksum(),
+    transactional: true,
+    up: applyGovernanceIdempotency,
+  },
+  {
+    ...SCHEMA_MIGRATIONS[8],
+    sourceChecksum: governanceInvariantsChecksum(),
+    transactional: true,
+    up: applyGovernanceInvariants,
+  },
+  {
+    ...SCHEMA_MIGRATIONS[9],
+    sourceChecksum: governanceBudgetSettlementChecksum(),
+    transactional: true,
+    up: applyGovernanceBudgetSettlement,
+  },
+  {
+    ...SCHEMA_MIGRATIONS[10],
+    sourceChecksum: governanceMembershipHistoryChecksum(),
+    transactional: true,
+    up: applyGovernanceMembershipHistory,
+  },
+  {
+    ...SCHEMA_MIGRATIONS[11],
     sourceChecksum: engineDefaultsChecksum(),
     transactional: true,
     up: applyEngineDefaults,
   },
   {
-    ...SCHEMA_MIGRATIONS[7],
+    ...SCHEMA_MIGRATIONS[12],
     sourceChecksum: agentProviderProfileChecksum(),
     transactional: true,
     up: async (client) => { await client.query(AGENT_PROVIDER_PROFILE_SQL) },
   },
   {
-    ...SCHEMA_MIGRATIONS[8],
+    ...SCHEMA_MIGRATIONS[13],
     sourceChecksum: agentRoutingClaimsChecksum(),
     transactional: true,
     up: applyAgentRoutingClaims,
@@ -2813,53 +2877,14 @@ export async function ensureConcurrentIndex(
       WHERE n.nspname = current_schema() AND c.relname = $1`,
     [name],
   )
-  if (rows[0] && rows[0].indisvalid && rows[0].indisready && rows[0].indislive) return
-
-  // `ensureSchema` pins the migration session at `lock_timeout = '5s'` so an
-  // ordinary ALTER cannot sit behind a long lock and stall the deploy. A
-  // CONCURRENTLY build is the one operation that guard must not cover.
-  //
-  // It takes no blocking lock — that is the entire point of it — but it does
-  // WaitForOlderSnapshots: it waits out every transaction that started before
-  // it, anywhere in the database, on any table. `lock_timeout` counts that wait,
-  // so ANY transaction open longer than five seconds kills the build with 55P03
-  // and leaves an index with indisvalid=f behind: every INSERT maintains it, no
-  // planner will use it. This repo documents such transactions itself — the
-  // per-agent scan below is noted at "~8s".
-  //
-  // Measured on Postgres 16: one 30s read on an UNRELATED table is enough. Under
-  // `lock_timeout='5s'` the build dies at 5.0s leaving indisvalid=f; with the
-  // timeout lifted the same build completes.
-  //
-  // ensureMessageClientIdIndex has bracketed itself this way since it was
-  // written; putting it here instead means every concurrent build inherits it,
-  // including the two migrations added in 0.16 that reach this from the
-  // versioned ledger rather than from the baseline.
-  const previous = await currentLockTimeout(client)
-  await client.query("SET lock_timeout = '0'")
-  try {
-    if (rows[0]) {
-      console.warn(`[db] dropping invalid leftover index ${name} before rebuild`)
-      await client.query(`DROP INDEX CONCURRENTLY IF EXISTS ${name}`)
-    }
-    await client.query(create)
-  } finally {
-    // Restore what the caller had rather than assuming '5s': the helper must not
-    // silently widen the guard for the statements that follow it.
-    await client.query(`SET lock_timeout = ${quoteLiteral(previous)}`)
+  if (rows[0] && (!rows[0].indisvalid || !rows[0].indisready || !rows[0].indislive)) {
+    console.warn(`[db] dropping invalid leftover index ${name} before rebuild`)
+    await client.query(`DROP INDEX CONCURRENTLY IF EXISTS ${name}`)
+  } else if (rows[0]) {
+    return
   }
+  await client.query(create)
   console.log(`[db] concurrent index ready: ${name}`)
-}
-
-/** The session's current lock_timeout, as a string SET will accept back. */
-async function currentLockTimeout(client: import('pg').PoolClient): Promise<string> {
-  const { rows } = await client.query<{ lock_timeout: string }>('SHOW lock_timeout')
-  return rows[0]?.lock_timeout ?? '5s'
-}
-
-/** Single-quote a value for a SET that cannot take a bind parameter. */
-function quoteLiteral(value: string): string {
-  return `'${value.replace(/'/g, "''")}'`
 }
 
 async function buildConcurrentIndexes(client: import('pg').PoolClient): Promise<void> {
