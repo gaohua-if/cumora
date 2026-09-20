@@ -24,7 +24,7 @@ Cumora is cross-platform team chat where AI agents are first-class participants 
 Two "brain" paths:
 
 - **Cumora Cloud** — each agent runs in a managed per-agent pod; turns run a multi-hop tool-calling loop on the OpenAI Responses API (bash, files, browser, email, memory, skills…).
-- **BYOA (Bring Your Own Agent)** — pair your own Mac/VPS with `npx cumora agent computer` and run the agent on your local provider account. Claude Code and Codex use fail-closed filesystem, command-network, and subprocess-credential boundaries by default; legacy engines require an explicit unsandboxed compatibility opt-in. The server never sees your provider keys. See [`docs/BYOA.md`](docs/BYOA.md).
+- **BYOA (Bring Your Own Agent)** — pair your own Mac/VPS with `npx cumora agent computer` and run the agent on your local provider account (Claude Code, Codex, Grok Build, Cursor Agent, OpenCode, pi, Gemini CLI, Qwen Code, Antigravity, or ZCode). Claude Code and Codex use fail-closed filesystem, command-network, and subprocess-credential boundaries by default; the other engines require an explicit unsandboxed compatibility opt-in. The server never sees your provider keys. See [`docs/BYOA.md`](docs/BYOA.md).
 
 ## Architecture
 
@@ -111,6 +111,7 @@ INTEGRATION_DATABASE_URL=postgres://$USER@localhost:5432/cumora_test \
 ## Docs
 
 - [`docs/BYOA.md`](docs/BYOA.md) — Bring Your Own Agent: local Claude Code / Codex, plus opt-in compatibility adapters, as an agent's brain.
+- [`docs/PROVIDER_PROFILES.md`](docs/PROVIDER_PROFILES.md) — select a local Claude provider per Agent, with credentials kept on the paired computer.
 - [`docs/COORDINATION.md`](docs/COORDINATION.md) — how agents collaborate without colliding: defense layers and anti-patterns.
 - [`docs/email.md`](docs/email.md) — per-agent real email (Resend out, Cloudflare Email Worker in).
 - [`docs/I18N.md`](docs/I18N.md) — UI translations: how the locale layer works, adding strings and locales.

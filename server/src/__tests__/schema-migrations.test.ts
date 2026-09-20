@@ -23,6 +23,9 @@ const { governanceIdempotencyChecksum } = await import('../db/migrations/0008-go
 const { governanceInvariantsChecksum } = await import('../db/migrations/0009-governance-invariants.js')
 const { governanceBudgetSettlementChecksum } = await import('../db/migrations/0010-governance-budget-settlement.js')
 const { governanceMembershipHistoryChecksum } = await import('../db/migrations/0011-governance-membership-history.js')
+const { engineDefaultsChecksum } = await import('../db/migrations/0012-engine-defaults.js')
+const { agentProviderProfileChecksum } = await import('../db/migrations/0013-agent-provider-profile.js')
+const { agentRoutingClaimsChecksum } = await import('../db/migrations/0014-agent-routing-claims.js')
 const { verifySchemaCompatibility } = await import('../db/schema-version.js')
 type SchemaVersionQueryable = import('../db/schema-version.js').SchemaVersionQueryable
 
@@ -70,6 +73,18 @@ test('the governance budget settlement migration matches its immutable manifest 
 
 test('the governance membership-history migration matches its immutable manifest checksum', () => {
   assert.equal(governanceMembershipHistoryChecksum(), SCHEMA_MIGRATIONS[10].checksum)
+})
+
+test('the engine defaults migration matches its immutable manifest checksum', () => {
+  assert.equal(engineDefaultsChecksum(), SCHEMA_MIGRATIONS[11].checksum)
+})
+
+test('the agent provider profile migration matches its immutable manifest checksum', () => {
+  assert.equal(agentProviderProfileChecksum(), SCHEMA_MIGRATIONS[12].checksum)
+})
+
+test('the agent routing claims migration matches its immutable manifest checksum', () => {
+  assert.equal(agentRoutingClaimsChecksum(), SCHEMA_MIGRATIONS[13].checksum)
 })
 
 test('the migration owner accepts an exact prefix and reports its pending suffix', () => {

@@ -34,7 +34,10 @@ import { deliver as deliverWake, deliverSteer, type PollWakeBrief } from './runt
 import { inprocClient, isAgentBusy } from './runtime/inproc-client.js'
 import { classifyInboxTriage, type InboxTriageVerdict } from './inbox-triage.js'
 import type { AgentTurnOptions } from './turn.js'
-import { recipientsForRoute, routeMessage } from './routing.js'
+import { recipientsForRoute, routeMessage, routeUnaddressedMessage } from './routing.js'
+import { electLineup, type ElectionCandidate } from './routing-election.js'
+import { claimPrimary, loadElectionCandidates, startRoutingClaimSweeperIfEnabled } from './routing-claims.js'
+import { BUSY_STATUS_LEASE_MS } from '../status.js'
 import { Semaphore } from '../concurrency.js'
 
 /** Bounds how many recipients the wake fan-out triages + wakes at once
@@ -470,15 +473,31 @@ async function wakeOne(
     if (!host) return false
   }
 
+  // Is there anything left to catch up ON? `message.new` is backed by the
+  // message row, so a runtime that was offline finds it on its next drain and
+  // an undelivered wake still comes true. Every other reason carries its whole
+  // content in the payload — an idle nudge, the scanner's brief, a manual poke
+  // — and that payload is gone the moment nobody is subscribed. The managed-pod
+  // path below already draws this line (it replays a synthetic wake until the
+  // pod attaches, and returns false if it never does); these two early returns
+  // are the same wake taking a different exit, and they were reporting success
+  // for a brief that reached no one.
+  //
+  // The scanner is the caller that notices: on `false` it declines to spend the
+  // activity fingerprint, so the next pass re-evaluates once the daemon is back.
+  // On `true` it records "background scan wake queued", claims the fingerprint,
+  // and that scan is never offered again.
+  const durableWithoutDelivery = reason === 'message.new'
+
   // BYOA agents run on a user-paired Computer (the `cumora agent computer`
   // daemon), never a server-managed pod. If delivered === 0 the daemon
   // simply isn't subscribed right now (host offline / asleep) — there's
-  // nothing to spin up. The wake is durable via the inbox, so the daemon
-  // catches up on its next reconnect drain, same as a cold pod would.
-  // Skip the pod path entirely; do NOT ensurePod / wake-retry kubectl.
+  // nothing to spin up. Skip the pod path entirely; do NOT ensurePod /
+  // wake-retry kubectl.
   if (isByoaKind(host.kind)) {
-    console.log(`[scheduler] ${agentId} is BYOA (${host.kind}); daemon offline — wake deferred to reconnect`)
-    return true
+    console.log(`[scheduler] ${agentId} is BYOA (${host.kind}); daemon offline — ${
+      durableWithoutDelivery ? 'wake deferred to reconnect' : `${reason} wake not delivered`}`)
+    return durableWithoutDelivery
   }
 
   // Free tier is BYOA-only: it must NEVER spin a managed Cumora Cloud pod. A free
@@ -490,8 +509,9 @@ async function wakeOne(
   // leak; the polluted legacy data (cloud computers + managed engines) was cleaned
   // up separately. The wake stays durable in the inbox for whenever they pair.
   if (host.tier === 'free') {
-    console.log(`[scheduler] ${agentId} is free-tier (BYOA-only); no managed pod — wake deferred until paired`)
-    return true
+    console.log(`[scheduler] ${agentId} is free-tier (BYOA-only); no managed pod — ${
+      durableWithoutDelivery ? 'wake deferred until paired' : `${reason} wake not delivered`}`)
+    return durableWithoutDelivery
   }
 
   // Paid (pro/max) managed agent — spin up a Pod. The Pod will catch up on first
@@ -783,7 +803,16 @@ async function wake(payload: MessageNewEvent): Promise<void> {
   // human-authored group message with a real named subset, and every uncertainty
   // (@all, no targets, a model error, an unparseable answer) keeps today's full
   // fan-out. See routing.ts.
-  if (!authorIsAgent && (conversation?.kind ?? 'group') !== 'direct' && recipients.length > 1) {
+  //
+  // The UNADDRESSED case (names nobody) gets the same treatment when
+  // env.ROUTING_ONE_OF_US is on: the router may elect ONE agent to take the
+  // turn instead of waking the room. The election is bounded by a lease row
+  // (routing-claims.ts) — a primary that never starts a turn is replaced by
+  // the next candidate — and every uncertainty fails open to the fan-out
+  // below. It deliberately does NOT resurrect the daemon-side `claimReply`
+  // that was removed for breaking chains: this happens once per message,
+  // before waking, and the woken agent still runs its own glance/yield.
+  if (!authorIsAgent && (conversation?.kind ?? 'group') !== 'direct' && recipients.length > 1 && messageKind !== 'system' && !deliveryAgentId) {
     const targets = [
       ...mentionedAgentIds(messageBody, recipients),
       ...(quotedAuthorId && recipients.includes(quotedAuthorId) ? [quotedAuthorId] : []),
@@ -791,7 +820,7 @@ async function wake(payload: MessageNewEvent): Promise<void> {
     const uniqueTargets = [...new Set(targets)]
     if (uniqueTargets.length > 0) {
       const mode = await routeMessage({
-        companyId: payload.companyId ?? null,
+        companyId: conversation.company_id,
         body: messageBody,
         conversationKind: conversation?.kind ?? 'group',
         candidates: recipients,
@@ -802,6 +831,41 @@ async function wake(payload: MessageNewEvent): Promise<void> {
         console.log(`[scheduler] routed ${conversationId} to ${routed.join(', ')} (mode=${mode}, ${recipients.length - routed.length} wake(s) avoided)`)
       }
       recipients = routed
+    } else if (env.ROUTING_ONE_OF_US) {
+      const roster = await loadElectionCandidates(recipients).catch(() => [] as ElectionCandidate[])
+      const route = await routeUnaddressedMessage({
+        companyId: conversation.company_id,
+        body: messageBody,
+        conversationKind: conversation?.kind ?? 'group',
+        candidates: roster.map((c) => ({ id: c.id, role: c.role })),
+      })
+      if (route.mode === 'one-of-us') {
+        const election = electLineup(route.primary, roster, { leaseMs: BUSY_STATUS_LEASE_MS })
+        if (election) {
+          // Fail open: if the lease row cannot be written, the no-show sweep
+          // has nothing to advance, so narrowing would be silent-room with no
+          // safety net — keep the full fan-out instead.
+          // An existing row means the message re-delivered after the wake
+          // claim TTL lapsed: honor the recorded primary instead of
+          // re-electing, and skip entirely when the lease already resolved.
+          const claim = await claimPrimary({
+            messageId: payload.message.id,
+            companyId: conversation.company_id,
+            conversationId,
+            orderedCandidates: election.lineup,
+          }).catch(() => null)
+          if (claim?.status === 'served' || claim?.status === 'exhausted') {
+            console.log(`[scheduler] claim for message ${payload.message.id} is already ${claim.status} — skipping wake on re-delivery`)
+            recipients = []
+          } else if (claim?.status === 'pending') {
+            const primary = claim.candidates[claim.cursor]
+            if (primary && recipients.includes(primary)) {
+              console.log(`[scheduler] routed ${conversationId} to ${primary} (mode=one-of-us, ${recipients.length - 1} wake(s) avoided)`)
+              recipients = [primary]
+            }
+          }
+        }
+      }
     }
   }
 
@@ -1008,6 +1072,7 @@ export function startScheduler(): void {
     }
   })
   startWakeRetryWorker()
+  startRoutingClaimSweeperIfEnabled()
   console.log(`[scheduler] mailbox scheduler listening on ${CH_MESSAGE_NEW}, ${CH_POLLS} · runtime=pod-only`)
 }
 

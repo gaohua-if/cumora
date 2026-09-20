@@ -1,4 +1,5 @@
 import { Router, json, type Request, type Response, type NextFunction } from 'express'
+import { isProviderProfileId } from '../agents/computer/provider-profiles.js'
 import type { PoolClient } from 'pg'
 import {
   storage, UPLOAD_DIR, freshenAttachmentUrl, normalizeStorageKey,
@@ -32,16 +33,17 @@ import {
   authorizeUrl, handleCallback, errorUrl, publicSignInError, returnUrlAllowed,
 } from '../oauth.js'
 import { adminRouter } from './admin-router.js'
-import { isWaitlistEnabled } from '../admin.js'
+import { getSettings, isAllowlistedAdmin, isWaitlistEnabled } from '../admin.js'
 import { ogPreview, OgError } from '../og.js'
 import { sendInvitationEmail, type InvitationEmailDelivery } from '../invitation-email.js'
-import { getUserQuota, sub2apiConfigured } from '../sub2api.js'
+import { getUserQuota, provisionUser as provisionSub2apiUser, sub2apiConfigured } from '../sub2api.js'
+import { insertPersonalWorkspace } from '../personal-workspace.js'
 import {
   ensureCloudComputer, issuePairingCode, pairComputer, announceComputerOnline,
   resolveDevice, mintAgentRuntimeToken, listAgentsForComputer,
   listComputers, revokeComputer, assignAgentToComputer, heartbeatComputer,
   cloudComputerId, issueRepairCode, requestEngineDetect, reportDetectedEngines,
-  setComputerDefaultEngine,
+  setComputerDefaultEngine, updateEngineDefaults, getEngineDefaults,
   PAIRABLE_ENGINES, type EngineId,
 } from '../agents/computer/registry.js'
 import { attachComputerControlStream, deliverEngineDetect } from '../agents/computer/control-bus.js'
@@ -797,9 +799,119 @@ async function recordPasswordAttempt(email: string, ip: string | null, success: 
 }
 
 /** Password login is intentionally for existing accounts. Accounts are still
- * created through an identity-attested OAuth flow or an administrator/invite;
- * an authenticated user can then establish a password below. This avoids
- * turning an unverified email claim into workspace/invitation access. */
+ * created through this registration route, an identity-attested OAuth flow,
+ * or an administrator/invite. */
+api.post('/auth/password/register', safe(async (req, res) => {
+  const email = normalizedLoginEmail(req.body?.email)
+  const password = passwordInput(req.body?.password)
+  const displayName = typeof req.body?.displayName === 'string'
+    ? req.body.displayName.trim().replace(/\s+/g, ' ').slice(0, 100)
+    : ''
+  const ip = req.socket.remoteAddress ?? null
+  const ua = (req.headers['user-agent'] as string | undefined) ?? null
+  if (!email || !displayName || !password) throw new HttpError(400, 'display name, email and password are required')
+  if (password.length < PASSWORD_MIN_LENGTH) {
+    throw new HttpError(400, `password must be ${PASSWORD_MIN_LENGTH}-${PASSWORD_MAX_LENGTH} characters`)
+  }
+
+  const settings = await getSettings()
+  if (settings.signups_paused) throw new HttpError(503, 'new registrations are temporarily paused')
+  if (settings.waitlist_enabled && !isAllowlistedAdmin(email)) {
+    throw new HttpError(403, 'registration requires waitlist approval')
+  }
+
+  // Limit bulk account creation independently from password-login failures.
+  const recent = await pool.query<{ count: number }>(
+    `SELECT COUNT(*)::int AS count FROM auth_attempts
+      WHERE $1::text IS NOT NULL AND ip=$1 AND reason='signup_created'
+        AND created_at > NOW() - INTERVAL '1 hour'`,
+    [ip],
+  )
+  if ((recent.rows[0]?.count ?? 0) >= 5) {
+    res.setHeader('Retry-After', '3600')
+    throw new HttpError(429, 'too many registrations from this address; try again later')
+  }
+
+  const encoded = await hashPassword(password)
+  const userId = `u-${randomUUID().slice(0, 12)}`
+  const companyId = `co-${randomUUID().slice(0, 10)}`
+  const avatar = gravatarUrlForEmail(email)
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    // Serialize signups for the same normalized email so concurrent requests
+    // cannot create duplicate users or produce inconsistent public errors.
+    await client.query(`SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, [`password-signup:${email}`])
+    const existing = await client.query(`SELECT 1 FROM users WHERE LOWER(email)=$1 LIMIT 1`, [email])
+    if (existing.rows[0]) throw new HttpError(409, 'an account with this email already exists')
+    await client.query(
+      `INSERT INTO users (id,email,display_name,password_hash,email_verified_at,avatar_url,is_admin,tier)
+       VALUES ($1,$2,$3,$4,NULL,$5,$6,'free')`,
+      [userId, email, displayName, encoded, avatar, isAllowlistedAdmin(email)],
+    )
+    await insertPersonalWorkspace(client, {
+      companyId,
+      name: `${displayName}'s workspace`,
+      ownerUserId: userId,
+      email,
+    })
+    await client.query(
+      `INSERT INTO company_members (company_id,user_id,role) VALUES ($1,$2,'owner')`,
+      [companyId, userId],
+    )
+    await client.query(
+      `INSERT INTO participants
+         (id,kind,name,role,initial,avatar_bg,avatar_url,status,company_id)
+       VALUES ($1,'human',$2,NULL,$3,'#FF8870',$4,'avail',$5)`,
+      [userId, displayName, displayName.charAt(0).toUpperCase(), avatar, companyId],
+    )
+    await client.query(
+      `INSERT INTO auth_attempts (email,ip,success,reason) VALUES ($1,$2,TRUE,'signup_created')`,
+      [email, ip],
+    )
+    await client.query('COMMIT')
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {})
+    throw error
+  } finally {
+    client.release()
+  }
+
+  // Post-commit onboarding is deliberately best-effort. A transient agent or
+  // quota-gateway failure must not roll back a valid human account.
+  try { await joinAllHands({ companyId, participantId: userId }) } catch (error) {
+    console.warn('[password-signup] all-hands onboarding failed', error)
+  }
+  if (sub2apiConfigured()) {
+    try {
+      const provisioned = await provisionSub2apiUser({
+        cumoraUserId: userId,
+        email,
+        displayName,
+        tier: 'free',
+      })
+      await pool.query(
+        `UPDATE users SET sub2api_user_id=$1,sub2api_api_key=$2 WHERE id=$3`,
+        [provisioned.sub2apiUserId, provisioned.apiKey, userId],
+      )
+    } catch (error) {
+      console.warn(`[password-signup] sub2api provisioning failed for ${userId}`, error)
+    }
+  }
+
+  const session = await createSession(userId, { ip: ip ?? undefined, ua: ua ?? undefined })
+  await audit({
+    kind: 'signup', userId, companyId, ip, userAgent: ua,
+    detail: { method: 'password', emailVerified: false },
+  })
+  res.status(201).json({
+    token: session.token,
+    expiresAt: session.expiresAt.toISOString(),
+    user: { id: userId, email, displayName, emailVerified: false },
+    companyId,
+  })
+}))
+
 api.post('/auth/password/login', safe(async (req, res) => {
   const email = normalizedLoginEmail(req.body?.email)
   const password = passwordInput(req.body?.password)
@@ -1337,6 +1449,11 @@ api.delete('/computers/:id', safe(async (req, res) => {
   res.json({ ok: true })
 }))
 
+function readProviderProfile(value: unknown): string | null {
+  if (value == null) return null
+  if (!isProviderProfileId(value)) throw new HttpError(400, 'invalid provider profile id')
+  return value
+}
 // Assign an agent to a computer (move between Cumora Cloud and a paired
 // machine), choosing its engine (owner/admin).
 api.post('/agents/:id/computer', safe(async (req, res) => {
@@ -1353,8 +1470,9 @@ api.post('/agents/:id/computer', safe(async (req, res) => {
   const out = await assignAgentToComputer({
     agentId: String(req.params.id), companyId, computerId, engine, inherit: inherit || !engine,
     model: modelPins.model, fastModel: modelPins.fastModel,
+    providerProfile: readProviderProfile(req.body?.providerProfile),
   })
-  if (!out) throw new HttpError(400, 'invalid computer, agent, or engine for this company')
+  if (!out) throw new HttpError(400, 'invalid computer, agent, engine, or provider profile for this company')
   res.json({ ok: true, ...out })
 }))
 
@@ -1445,6 +1563,30 @@ api.post('/computers/:id/default-engine', safe(async (req, res) => {
   res.json({ ok: true, ...out })
 }))
 
+// Per-engine default model settings. Read and write the models each engine
+// uses by default when an agent has no explicit model set.
+api.get('/computers/:id/engine-defaults', safe(async (req, res) => {
+  const { companyId } = await requireCompany(req)
+  const defaults = await getEngineDefaults({ computerId: String(req.params.id), companyId })
+  if (defaults === null) throw new HttpError(404, 'computer not found')
+  res.json({ defaults })
+}))
+
+api.put('/computers/:id/engine-defaults', safe(async (req, res) => {
+  const { companyId } = await requireCompanyRole(req)
+  const defaults = req.body?.defaults
+  if (!defaults || typeof defaults !== 'object') {
+    throw new HttpError(400, 'defaults object required')
+  }
+  const updated = await updateEngineDefaults({
+    computerId: String(req.params.id),
+    companyId,
+    defaults,
+  })
+  if (updated === null) throw new HttpError(404, 'computer not found')
+  res.json({ ok: true, defaults: updated })
+}))
+
 api.post('/computers/me/engines', safe(async (req, res) => {
   const { computerId } = await requireDevice(req)
   const engines = Array.isArray(req.body?.engines)
@@ -1474,7 +1616,7 @@ api.get('/computers/me/control-stream', safe(async (req, res) => {
 // Agents assigned to the calling computer (daemon discovery on boot).
 api.get('/computers/me/agents', safe(async (req, res) => {
   const { computerId } = await requireDevice(req)
-  res.json(await listAgentsForComputer(computerId))
+  res.json(await listAgentsForComputer(computerId, req.query.providerProfiles === '1'))
 }))
 
 // Daemon liveness heartbeat — keeps the computer 'online' (an offline sweep
@@ -1495,7 +1637,7 @@ api.post('/computers/heartbeat', safe(async (req, res) => {
 // Mint a per-agent runtime JWT for the calling computer (daemon refresh loop).
 api.post('/agents/:id/runtime-token', safe(async (req, res) => {
   const { computerId } = await requireDevice(req)
-  const minted = await mintAgentRuntimeToken({ computerId, agentId: String(req.params.id) })
+  const minted = await mintAgentRuntimeToken({ computerId, agentId: String(req.params.id), providerProfile: readProviderProfile(req.body?.providerProfile) })
   if (!minted) throw new HttpError(403, 'agent not assigned to this computer')
   res.json(minted)
 }))
@@ -2271,8 +2413,8 @@ api.post('/invitations/:token/accept', safe(async (req, res) => {
   const token = String(req.params.token)
   if (!token || token.length < 8) { res.status(400).json({ error: 'bad token' }); return }
   const tokenHash = hashInviteToken(token)
-  const { rows: userRow } = await pool.query<{ email: string; display_name: string; avatar_url: string | null }>(
-    `SELECT email, display_name, avatar_url FROM users WHERE id = $1`, [me],
+  const { rows: userRow } = await pool.query<{ email: string; display_name: string; avatar_url: string | null; email_verified_at: string | null }>(
+    `SELECT email, display_name, avatar_url, email_verified_at FROM users WHERE id = $1`, [me],
   )
   if (!userRow[0]) { res.status(401).json({ error: 'session points to missing user' }); return }
   const viewerEmail = userRow[0].email.toLowerCase()
@@ -2316,6 +2458,12 @@ api.post('/invitations/:token/accept', safe(async (req, res) => {
       await client.query('ROLLBACK')
       res.status(403).json({
         error: `this invitation is reserved for ${inv.email} — sign in with that email to accept`,
+      }); return
+    }
+    if (inv.email && !userRow[0].email_verified_at) {
+      await client.query('ROLLBACK')
+      res.status(403).json({
+        error: 'verify this account email with a linked identity provider before accepting an email-restricted invitation',
       }); return
     }
 
@@ -2557,14 +2705,14 @@ api.get('/participants', async (req, res) => {
     systemPrompt: string | null; model: string | null
     email: string | null; companySlug: string | null
     departedAt: string | null
-    computerId: string | null; engine: string | null; fastModel: string | null
+    computerId: string | null; engine: string | null; fastModel: string | null; providerProfile: string | null
     engineInherit: boolean | null
   }>(
     `SELECT p.id, p.kind, p.name, p.role, p.initial,
             p.avatar_bg AS "avatarBg", p.avatar_url AS "avatarUrl",
             p.status, p.status_updated_at AS "statusUpdatedAt",
             p.bio, p.tools, p.system_prompt AS "systemPrompt", p.model,
-            p.computer_id AS "computerId", p.engine, p.fast_model AS "fastModel",
+            p.computer_id AS "computerId", p.engine, p.fast_model AS "fastModel", p.provider_profile AS "providerProfile",
             p.engine_inherit AS "engineInherit",
             -- Email resolution differs by kind:
             --  - agents carry their own minted address on participants.email
@@ -3054,6 +3202,7 @@ api.post('/agents', async (req, res) => {
   const computerId = typeof req.body?.computerId === 'string' ? req.body.computerId.trim() || null : null
   const engine = typeof req.body?.engine === 'string' ? req.body.engine : undefined
   const inherit = req.body?.inherit === true
+  const providerProfile = readProviderProfile(req.body?.providerProfile)
   let creation: Awaited<ReturnType<typeof createAgentRecord>>
   try {
     creation = await createAgentRecord({
@@ -3069,6 +3218,7 @@ api.post('/agents', async (req, res) => {
       avatarBg: data.avatarBg,
       model: data.model,
       fastModel: data.fastModel,
+      providerProfile,
       tools: data.tools ?? undefined,
       computerId,
       engine,
@@ -5165,7 +5315,24 @@ class QueryAbandonedError extends Error {}
  * a command). A cancelled or timed-out search resolves to no rows rather than
  * throwing: there is no longer anyone to show an error to, and a partial
  * dropdown is a better failure than a 500.
+ *
+ * A pid alone is not a safe thing to cancel. Nothing waits for that cancel — it
+ * is fired with `void` — so it can still be in flight when the abandoned search
+ * finishes on its own and `finally` hands the connection back. The idle pool is
+ * a LIFO stack, so the very next borrower gets that same backend, and the
+ * cancel lands on THEIR query. Measured against Postgres 16: it kills them with
+ * 57014, which for another search means silently empty results and for anything
+ * else a 500 — on a request that did nothing wrong.
+ *
+ * So the cancel names the search, not just the backend. Each search publishes a
+ * unique token as its `application_name` for the life of its transaction
+ * (`set_config(…, is_local => true)`, so it reverts at COMMIT/ROLLBACK exactly
+ * like the timeout above), and the cancel only fires on a backend still
+ * carrying that token. A cancel that arrives late now matches nothing.
  */
+export const CANCEL_ABANDONED_SEARCH_SQL = `SELECT pg_cancel_backend(pid) FROM pg_stat_activity
+   WHERE pid = $1 AND application_name = $2 AND state = 'active'`
+
 async function searchMessagesBounded(
   res: Response,
   params: unknown[],
@@ -5174,13 +5341,16 @@ async function searchMessagesBounded(
   const client = await pool.connect()
   let backendPid: number | null = null
   let abandoned = false
+  // Identifies THIS search on THIS backend, for exactly as long as it runs.
+  const searchToken = `cumora-search:${randomUUID()}`
   const cancelIfRunning = (): void => {
     // `close` also fires on a normal, fully-written response — only an early
     // close means the caller is gone.
     if (res.writableEnded) return
     abandoned = true
     if (backendPid == null) return
-    void pool.query('SELECT pg_cancel_backend($1)', [backendPid]).catch(() => { /* best effort */ })
+    void pool.query(CANCEL_ABANDONED_SEARCH_SQL, [backendPid, searchToken])
+      .catch(() => { /* best effort */ })
   }
   res.on('close', cancelIfRunning)
   try {
@@ -5188,7 +5358,12 @@ async function searchMessagesBounded(
     // SET LOCAL, not SET: the deadline dies with this transaction, so releasing
     // the connection cannot leak a 3s timeout onto the next borrower.
     await client.query(`SET LOCAL statement_timeout = ${SEARCH_MESSAGE_TIMEOUT_MS}`)
-    const pid = await client.query<{ pid: number }>('SELECT pg_backend_pid() AS pid')
+    // Both in one round trip — the token has to be published before we hand the
+    // pid to a canceller, and SET takes no bind parameter, so set_config it is.
+    const pid = await client.query<{ pid: number }>(
+      'SELECT pg_backend_pid() AS pid, set_config($1, $2, true)',
+      ['application_name', searchToken],
+    )
     backendPid = pid.rows[0]?.pid ?? null
     if (abandoned) throw new QueryAbandonedError()
     const result = await client.query<{ body: string } & Record<string, unknown>>(sql, params)

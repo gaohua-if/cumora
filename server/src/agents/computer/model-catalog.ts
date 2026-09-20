@@ -123,6 +123,17 @@ const PRESETS: Record<EngineId, EngineModelCatalog> = {
     fastModelScope: 'agent',
     source: 'presets',
   },
+  zcode: {
+    // The model namespace is the operator's zcode config (GLM plan or a
+    // third-party provider), so there is no first-party preset to name —
+    // supportsCustom lets an agent pin any id their zcode install accepts.
+    models: [],
+    defaultModel: null,
+    defaultFastModel: null,
+    supportsCustom: true,
+    fastModelScope: 'agent',
+    source: 'presets',
+  },
 }
 
 const MODEL_PROBE_TIMEOUT_MS = 10_000
@@ -216,6 +227,40 @@ function runText(command: string, args: string[]): Promise<string> {
   })
 }
 
+/** Split a listing line into its id column and whatever follows. Columns are
+ *  separated by a tab or a run of two or more spaces — how a CLI lays out a
+ *  table. Single spaces are how a sentence is written, so prose stays in one
+ *  piece and `modelIdToken` can reject it whole. */
+function splitIdColumn(line: string): [string, string] {
+  const stripped = line.replace(/^[*✓>•-]+\s*/, '')
+  const sep = stripped.search(/\t| {2,}/)
+  if (sep < 0) return [stripped.trim(), '']
+  return [stripped.slice(0, sep).trim(), stripped.slice(sep).trim()]
+}
+
+/** The model id in a listing line's id column, or null when that column is not
+ *  an id at all.
+ *
+ *  `runText` folds stderr into stdout and ignores the exit status, so whatever
+ *  a CLI printed when it could not list models arrives here as if it were a
+ *  catalog — and the exit status would not have saved us. Measured against a
+ *  real cursor-agent: an account with nothing provisioned prints
+ *  "No models available for this account." and exits 0. That line used to
+ *  become a selectable model with the id "No", merged AHEAD of the built-in
+ *  preset, so the picker offered "No" and the real defaults vanished.
+ *
+ *  An id occupies its whole column — `auto`, `gpt-5.5`, `gemini-3.8-flash-high`
+ *  — and prose does not. That test needs no vendor's error wording, which is
+ *  the point: the next CLI's phrasing, in a locale we have never seen, still
+ *  fails it. */
+function modelIdToken(column: string): string | null {
+  if (!column || /\s/.test(column)) return null
+  // "Error:", "Warning:" — a bare word wearing sentence punctuation, which can
+  // survive the column rule when a CLI aligns its message.
+  if (/^[a-z]+[.:,;!?]+$/i.test(column)) return null
+  return column.match(/^[a-z0-9][\w./:@+-]*$/i)?.[0] ?? null
+}
+
 /** Parse model-list output shared by OpenCode, pi, Cursor and Antigravity. Exported so new
  * adapters can add fixtures without spawning a real account-bound CLI. */
 export function parseListedModels(text: string, style: 'provider' | 'pi' | 'cursor' | 'antigravity'): EngineModelOption[] {
@@ -237,10 +282,8 @@ export function parseListedModels(text: string, style: 'provider' | 'pi' | 'curs
         }
       }
     } else if (style === 'antigravity') {
-      const tabIdx = line.indexOf('\t')
-      const idPart = (tabIdx >= 0 ? line.slice(0, tabIdx) : line).trim()
-      const labelPart = (tabIdx >= 0 ? line.slice(tabIdx + 1) : idPart).trim()
-      const candidate = idPart.replace(/^[*✓>•-]+\s*/, '').match(/^([a-z0-9][\w./:@+-]*)/i)?.[1] ?? null
+      const [idPart, labelPart] = splitIdColumn(line)
+      const candidate = modelIdToken(idPart)
       if (candidate) {
         id = candidate
         label = labelPart || candidate
@@ -253,7 +296,7 @@ export function parseListedModels(text: string, style: 'provider' | 'pi' | 'curs
         if (recs.length) recommendedFor = recs
       }
     } else {
-      const candidate = line.replace(/^[*✓>•-]+\s*/, '').match(/^([a-z0-9][\w./:@+-]*)/i)?.[1] ?? null
+      const candidate = modelIdToken(splitIdColumn(line)[0])
       if (candidate && !/^(available|current|default|name|model)$/i.test(candidate)) id = candidate
     }
     const normalized = clean(id, 160)

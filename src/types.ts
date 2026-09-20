@@ -7,7 +7,7 @@ export type Status = 'avail' | 'working' | 'thinking' | 'waiting' | 'resting'
 export type ComputerKind = 'cloud' | 'local' | 'vps'
 export type ComputerStatus = 'online' | 'offline' | 'busy'
 /** Engine an agent's host runs it on. 'managed' = Cumora's server-side loop. */
-export type EngineId = 'managed' | 'claude' | 'codex' | 'grok' | 'cursor' | 'opencode' | 'pi' | 'gemini' | 'qwen' | 'antigravity'
+export type EngineId = 'managed' | 'claude' | 'codex' | 'grok' | 'cursor' | 'opencode' | 'pi' | 'gemini' | 'qwen' | 'antigravity' | 'zcode'
 
 export interface EngineModelOption {
   id: string
@@ -27,6 +27,7 @@ export interface EngineModelCatalog {
 }
 
 export interface DetectedEngine {
+  providerProfiles?: Array<{ id: string; label: string; model: string; fastModel: string }>
   id: EngineId
   bin: string
   path: string | null
@@ -42,6 +43,15 @@ export interface DetectedEngine {
   /** Models visible to the CLI login/config on this specific computer. */
   modelCatalog?: EngineModelCatalog
 }
+
+/** Per-engine default model settings. Stored on the Computer and inherited
+ *  by agents when their own model/fastModel is not set. */
+export interface EngineDefaults {
+  model?: string | null
+  fastModel?: string | null
+}
+
+export type EngineDefaultsMap = Partial<Record<EngineId, EngineDefaults>>
 
 export interface Computer {
   id: string
@@ -66,6 +76,9 @@ export interface Computer {
   latestDaemonVersion?: string | null
   /** True when the daemon is behind the latest version → show the upgrade banner. */
   daemonOutdated?: boolean
+  /** Per-engine default model settings. Agents inherit these when their own
+   *  model/fastModel is not set. */
+  engineDefaults?: EngineDefaultsMap
 }
 
 export interface Participant {
@@ -87,6 +100,7 @@ export interface Participant {
   /** big-brain (main) model override; null/undefined = use system default */
   model?: string | null
   /** small-brain (fast/auxiliary) model override */
+  providerProfile?: string | null
   fastModel?: string | null
   /** id of the Computer this agent runs on (null/undefined = Cumora Cloud) */
   computerId?: string | null

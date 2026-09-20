@@ -14,6 +14,7 @@
  *   - per-agent runtime JWTs minted for a paired device (reuses
  *     runtime/jwt.ts — the same token a pod gets)
  */
+import { type ProviderProfileMetadata, isProviderProfileId, sanitizeProviderProfiles } from './provider-profiles.js'
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { pool } from '../../db/pool.js'
 import { CH_STATUS, publish } from '../../redis.js'
@@ -22,7 +23,7 @@ import { signAgentToken } from '../runtime/jwt.js'
 import type { EngineModelCatalog, EngineModelOption, FastModelScope, ModelCatalogSource } from './model-catalog.js'
 
 export type ComputerKind = 'cloud' | 'local' | 'vps'
-export type EngineId = 'managed' | 'claude' | 'codex' | 'grok' | 'cursor' | 'opencode' | 'pi' | 'gemini' | 'qwen' | 'antigravity'
+export type EngineId = 'managed' | 'claude' | 'codex' | 'grok' | 'cursor' | 'opencode' | 'pi' | 'gemini' | 'qwen' | 'antigravity' | 'zcode'
 export type ComputerStatus = 'online' | 'offline' | 'busy'
 
 /** How long a paired computer can go without a heartbeat before the sweep
@@ -62,6 +63,7 @@ const PAIRABLE: Record<Exclude<EngineId, 'managed'>, true> = {
   claude: true, codex: true, grok: true, cursor: true, opencode: true, pi: true, gemini: true,
   qwen: true,
   antigravity: true,
+  zcode: true,
 }
 export const PAIRABLE_ENGINES: ReadonlySet<string> = new Set<string>(Object.keys(PAIRABLE))
 
@@ -113,10 +115,12 @@ const ENGINE_BINS: Record<Exclude<EngineId, 'managed'>, string> = {
   gemini: 'gemini',
   qwen: 'qwen',
   antigravity: 'agy',
+  zcode: 'zcode',
 }
 
 /** Cached PATH snapshot from the daemon. The app reads this; it never probes. */
 export interface DetectedEngine {
+  providerProfiles?: ProviderProfileMetadata[]
   id: string
   bin: string
   path: string | null
@@ -247,12 +251,22 @@ export function sanitizeDetectedEngines(
     byId.set(id, {
       id, bin, path, ...sanitizeVersionFields(rec), blockedReason,
       ...(modelCatalog ? { modelCatalog } : {}),
+      ...(id === 'claude' && Array.isArray(rec.providerProfiles) ? { providerProfiles: sanitizeProviderProfiles(rec.providerProfiles) } : {}),
     })
   }
   // Every row carries the same keys, reported or not, so the app never has to
   // distinguish "field absent" from "nothing installed to report".
   return allowed.map((id) => byId.get(id) ?? unreportedEngine(id))
 }
+
+/** Per-engine default model settings stored on a Computer.
+ *  Structure: { "claude": { "model": "x", "fastModel": "y" }, ... } */
+export interface EngineDefaults {
+  model?: string | null
+  fastModel?: string | null
+}
+
+export type EngineDefaultsMap = Record<string, EngineDefaults>
 
 export interface ComputerRow {
   id: string
@@ -275,6 +289,9 @@ export interface ComputerRow {
   detected_engines: DetectedEngine[]
   engines_detected_at: string | null
   detect_requested_at: string | null
+  /** Per-engine default model settings. Agents inherit these when their own
+   *  model/fastModel is not set. */
+  engine_defaults: EngineDefaultsMap
 }
 
 /** A computer plus the computed upgrade signal the app uses to show the banner. */
@@ -592,6 +609,7 @@ export async function resolveDevice(token: string): Promise<{ computerId: string
  *  This is the credential the daemon uses for the agent's wake-stream SSE and
  *  daemon-side runtime calls. It never enters the model process or agent home. */
 export async function mintAgentRuntimeToken(args: {
+  providerProfile?: string | null
   computerId: string
   agentId: string
 }): Promise<{ token: string; expiresInSeconds: number } | null> {
@@ -608,8 +626,9 @@ export async function mintAgentRuntimeToken(args: {
         AND c.revoked_at IS NULL
       WHERE p.id = $1 AND p.kind = 'agent' AND p.computer_id = $2
         AND p.departed_at IS NULL
+        AND p.provider_profile IS NOT DISTINCT FROM $3::text
       LIMIT 1`,
-    [args.agentId, args.computerId],
+    [args.agentId, args.computerId, args.providerProfile ?? null],
   )
   if (!rows[0]) return null
   const token = signAgentToken({
@@ -626,34 +645,33 @@ export async function mintAgentRuntimeToken(args: {
  *  Includes the per-agent big-brain (`model`) + small-brain (`fastModel`)
  *  overrides so the daemon can pass them to the engine.
  *
- *  When a row has no explicit model, a reported custom-Claude provider default
- *  takes precedence; otherwise fall back to the deploy-level default
- *  (CUMORA_DEFAULT_CLAUDE_MODEL / CUMORA_DEFAULT_CODEX_MODEL /
- *  CUMORA_DEFAULT_GROK_MODEL / CUMORA_DEFAULT_CURSOR_MODEL /
- *  CUMORA_DEFAULT_OPENCODE_MODEL / CUMORA_DEFAULT_PI_MODEL /
- *  CUMORA_DEFAULT_GEMINI_MODEL / CUMORA_DEFAULT_QWEN_MODEL /
- *  CUMORA_DEFAULT_ANTIGRAVITY_MODEL) so every BYOA
- *  daemon without a custom provider gets a consistent pin. Critical: a model
- *  upgrade in the underlying CLI (e.g. claude 4.7 → 4.8) silently changes
- *  agent behavior on every user's machine unless we pin here. A custom
+ *  When a row has no explicit model, the computer's engine_defaults take
+ *  precedence; then a reported custom-Claude provider default; then fall back
+ *  to the deploy-level default (CUMORA_DEFAULT_CLAUDE_MODEL / etc.) so every
+ *  BYOA daemon without a custom provider gets a consistent pin. Critical: a
+ *  model upgrade in the underlying CLI (e.g. claude 4.7 → 4.8) silently
+ *  changes agent behavior on every user's machine unless we pin here. A custom
  *  provider can explicitly make its unnamed local default authoritative so a
  *  vendor-specific deploy pin never crosses into the wrong namespace. */
-export async function listAgentsForComputer(computerId: string): Promise<
-  Array<{ id: string; name: string; role: string | null; systemPrompt: string | null; engine: EngineId | null; model: string | null; fastModel: string | null }>
+export async function listAgentsForComputer(computerId: string, supportsProviderProfiles = false): Promise<
+  Array<{ id: string; name: string; role: string | null; systemPrompt: string | null; engine: EngineId | null; model: string | null; fastModel: string | null; providerProfile: string | null }>
 > {
   const { rows } = await pool.query<{
     id: string; name: string; role: string | null; systemPrompt: string | null
     engine: EngineId | null; model: string | null; fastModel: string | null
-    availableEngines?: string[]; detectedEngines?: unknown
+    providerProfile: string | null
+    availableEngines?: string[]; detectedEngines?: unknown; engineDefaults?: unknown
   }>(
     `SELECT p.id, p.name, p.role, p.system_prompt AS "systemPrompt", p.engine, p.model,
-            p.fast_model AS "fastModel", c.available_engines AS "availableEngines",
-            COALESCE(c.detected_engines, '[]'::jsonb) AS "detectedEngines"
+            p.fast_model AS "fastModel", p.provider_profile AS "providerProfile", c.available_engines AS "availableEngines",
+            COALESCE(c.detected_engines, '[]'::jsonb) AS "detectedEngines",
+            COALESCE(c.engine_defaults, '{}'::jsonb) AS "engineDefaults"
        FROM participants p
        JOIN computers c ON c.id = p.computer_id
       WHERE p.computer_id = $1 AND p.kind = 'agent' AND p.departed_at IS NULL
+        AND ($2::boolean OR p.provider_profile IS NULL)
       ORDER BY p.name ASC`,
-    [computerId],
+    [computerId, supportsProviderProfiles],
   )
   const claudeDefault = process.env.CUMORA_DEFAULT_CLAUDE_MODEL?.trim() || null
   const codexDefault = process.env.CUMORA_DEFAULT_CODEX_MODEL?.trim() || null
@@ -664,10 +682,19 @@ export async function listAgentsForComputer(computerId: string): Promise<
   const geminiDefault = process.env.CUMORA_DEFAULT_GEMINI_MODEL?.trim() || null
   const qwenDefault = process.env.CUMORA_DEFAULT_QWEN_MODEL?.trim() || null
   const antigravityDefault = process.env.CUMORA_DEFAULT_ANTIGRAVITY_MODEL?.trim() || null
+  const zcodeDefault = process.env.CUMORA_DEFAULT_ZCODE_MODEL?.trim() || null
   return rows.map((r) => {
-    const { availableEngines, detectedEngines, ...agent } = r
+    const { availableEngines, detectedEngines, engineDefaults, ...agent } = r
+    // A profile's endpoint owns its model namespace: neither the computer's
+    // engine_defaults nor the deploy-level pin may name a model for it.
+    if (agent.providerProfile) return agent
     const localCatalog = sanitizeDetectedEngines(detectedEngines, availableEngines ?? [])
       .find((entry) => entry.id === agent.engine)?.modelCatalog
+    // Parse the engine_defaults JSONB
+    const defaults = (engineDefaults && typeof engineDefaults === 'object'
+      ? engineDefaults as EngineDefaultsMap
+      : {}) as EngineDefaultsMap
+    const engineDefaultsForAgent = agent.engine ? defaults[agent.engine] : undefined
     // A custom Claude endpoint owns its model namespace. Its reported defaults
     // fill only unpinned fields; explicit per-Agent choices still win. When it
     // cannot name a main/fast default, leave that field null so the CLI chooses
@@ -675,11 +702,16 @@ export async function listAgentsForComputer(computerId: string): Promise<
     if (r.engine === 'claude' && localCatalog?.prefersLocalDefault) {
       return {
         ...agent,
-        model: agent.model ?? localCatalog.defaultModel,
-        fastModel: agent.fastModel ?? localCatalog.defaultFastModel,
+        model: agent.model ?? engineDefaultsForAgent?.model ?? localCatalog.defaultModel,
+        fastModel: agent.fastModel ?? engineDefaultsForAgent?.fastModel ?? localCatalog.defaultFastModel,
       }
     }
-    if (agent.model) return agent
+    // Apply engine_defaults before deploy-level defaults
+    const modelWithEngineDefault = agent.model ?? engineDefaultsForAgent?.model ?? null
+    const fastModelWithEngineDefault = agent.fastModel ?? engineDefaultsForAgent?.fastModel ?? null
+    if (modelWithEngineDefault) {
+      return { ...agent, model: modelWithEngineDefault, fastModel: fastModelWithEngineDefault }
+    }
     const dflt = r.engine === 'codex'
       ? codexDefault
       : r.engine === 'claude'
@@ -698,8 +730,10 @@ export async function listAgentsForComputer(computerId: string): Promise<
                     ? qwenDefault
                     : r.engine === 'antigravity'
                       ? antigravityDefault
+                      : r.engine === 'zcode'
+                        ? zcodeDefault
                     : null
-    return dflt ? { ...agent, model: dflt } : agent
+    return dflt ? { ...agent, model: dflt, fastModel: fastModelWithEngineDefault } : { ...agent, fastModel: fastModelWithEngineDefault }
   })
 }
 
@@ -711,7 +745,8 @@ export async function listComputers(companyId: string): Promise<ComputerWithUpgr
     `SELECT id, company_id, owner_user_id, name, kind, available_engines, status,
             last_seen_at, paired_at, revoked_at, created_at, daemon_version, daemon_supervised,
             COALESCE(detected_engines, '[]'::jsonb) AS detected_engines,
-            engines_detected_at, detect_requested_at
+            engines_detected_at, detect_requested_at,
+            COALESCE(engine_defaults, '{}'::jsonb) AS engine_defaults
        FROM computers
       WHERE company_id = $1 AND revoked_at IS NULL
       ORDER BY (kind = 'cloud') DESC, created_at ASC`,
@@ -927,6 +962,7 @@ export function isByoaKind(kind: ComputerKind | null): boolean {
  * `strictEngine` so an unavailable explicit pin fails instead of silently
  * selecting the Computer default. */
 export async function resolveComputerAssignment(args: {
+  providerProfile?: string | null
   companyId: string
   computerId: string
   engine?: string
@@ -934,8 +970,8 @@ export async function resolveComputerAssignment(args: {
   inherit?: boolean
   strictEngine?: boolean
 }, db: Queryable = pool): Promise<{ kind: ComputerKind; engine: EngineId; inherit: boolean } | null> {
-  const { rows } = await db.query<{ kind: ComputerKind; available_engines: string[] }>(
-    `SELECT kind, available_engines FROM computers
+  const { rows } = await db.query<{ kind: ComputerKind; available_engines: string[]; detected_engines?: unknown }>(
+    `SELECT kind, available_engines, detected_engines FROM computers
       WHERE id = $1 AND company_id = $2 AND revoked_at IS NULL
       LIMIT 1 FOR SHARE`,
     [args.computerId, args.companyId],
@@ -965,6 +1001,12 @@ export async function resolveComputerAssignment(args: {
     inherit = wantInherit
   }
 
+  if (args.providerProfile != null) {
+    if (!isProviderProfileId(args.providerProfile) || engine !== 'claude' || inherit) return null
+    const profiles = sanitizeDetectedEngines(computer.detected_engines, computer.available_engines)
+      .find((entry) => entry.id === 'claude')?.providerProfiles ?? []
+    if (!profiles.some((p) => p.id === args.providerProfile)) return null
+  }
   return { kind: computer.kind, engine, inherit }
 }
 
@@ -974,6 +1016,7 @@ export async function resolveComputerAssignment(args: {
  *  Returns the resolved { kind, engine } or null if the computer/agent is
  *  invalid for this company. */
 export async function assignAgentToComputer(args: {
+  providerProfile?: string | null
   agentId: string
   companyId: string
   computerId: string
@@ -998,6 +1041,8 @@ export async function assignAgentToComputer(args: {
     params.push(args.fastModel)
     sets.push(`fast_model = $${params.length}`)
   }
+  params.push(args.providerProfile ?? null)
+  sets.push(`provider_profile = $${params.length}`)
   params.push(args.agentId, args.companyId)
   const { rowCount } = await pool.query(
     `UPDATE participants SET ${sets.join(', ')}
@@ -1055,6 +1100,102 @@ export async function reportDetectedEngines(args: {
   )
   await broadcastComputerStatus(args.computerId, row.company_id, 'online')
   return true
+}
+
+/** Sanitize and validate engine defaults before storage. Only accepts known
+ *  engine ids and string model names within length limits. */
+function sanitizeEngineDefaults(raw: unknown): EngineDefaultsMap {
+  if (!raw || typeof raw !== 'object') return {}
+  const result: EngineDefaultsMap = {}
+  for (const [engineId, defaults] of Object.entries(raw as Record<string, unknown>)) {
+    if (!PAIRABLE_ENGINES.has(engineId)) continue
+    if (!defaults || typeof defaults !== 'object') continue
+    const rec = defaults as Record<string, unknown>
+    // Empty/whitespace-only strings mean "clear" — same as an explicit null.
+    const cleanModel = (value: unknown): string | null | undefined => {
+      if (typeof value === 'string') {
+        const trimmed = value.trim()
+        return trimmed ? trimmed.slice(0, 160) : null
+      }
+      return value === null ? null : undefined
+    }
+    const model = cleanModel(rec.model)
+    const fastModel = cleanModel(rec.fastModel)
+    if (model !== undefined || fastModel !== undefined) {
+      result[engineId] = {
+        ...(model !== undefined ? { model } : {}),
+        ...(fastModel !== undefined ? { fastModel } : {}),
+      }
+    }
+  }
+  return result
+}
+
+/** Update the per-engine default model settings for a computer.
+ *  Merges with existing defaults — pass null for a field to clear it. */
+export async function updateEngineDefaults(args: {
+  computerId: string
+  companyId: string
+  defaults: EngineDefaultsMap
+}): Promise<EngineDefaultsMap | null> {
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    // Lock before reading so concurrent partial updates merge into the latest state.
+    const { rows } = await client.query<{ engine_defaults: unknown }>(
+      `SELECT engine_defaults FROM computers
+        WHERE id = $1 AND company_id = $2 AND kind <> 'cloud' AND revoked_at IS NULL LIMIT 1 FOR UPDATE`,
+      [args.computerId, args.companyId],
+    )
+    if (!rows[0]) {
+      await client.query('COMMIT')
+      return null
+    }
+    const existing = sanitizeEngineDefaults(rows[0].engine_defaults)
+    const merged = sanitizeEngineDefaults(args.defaults)
+    // Deep merge: for each engine, merge model and fastModel
+    for (const [engineId, defaults] of Object.entries(merged)) {
+      if (defaults.model === null && defaults.fastModel === null) {
+        // Both null means remove this engine's defaults entirely
+        delete existing[engineId]
+      } else {
+        existing[engineId] = {
+          ...(existing[engineId] ?? {}),
+          ...(defaults.model !== undefined ? { model: defaults.model } : {}),
+          ...(defaults.fastModel !== undefined ? { fastModel: defaults.fastModel } : {}),
+        }
+        // Clean up nulls
+        if (existing[engineId].model === null) delete existing[engineId].model
+        if (existing[engineId].fastModel === null) delete existing[engineId].fastModel
+        if (!existing[engineId].model && !existing[engineId].fastModel) delete existing[engineId]
+      }
+    }
+    await client.query(
+      `UPDATE computers SET engine_defaults = $2::jsonb WHERE id = $1`,
+      [args.computerId, JSON.stringify(existing)],
+    )
+    await client.query('COMMIT')
+    return existing
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {})
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
+/** Get the per-engine default model settings for a computer. */
+export async function getEngineDefaults(args: {
+  computerId: string
+  companyId: string
+}): Promise<EngineDefaultsMap | null> {
+  const { rows } = await pool.query<{ engine_defaults: unknown }>(
+    `SELECT engine_defaults FROM computers
+      WHERE id = $1 AND company_id = $2 AND kind <> 'cloud' AND revoked_at IS NULL LIMIT 1`,
+    [args.computerId, args.companyId],
+  )
+  if (!rows[0]) return null
+  return sanitizeEngineDefaults(rows[0].engine_defaults)
 }
 
 /** Make `engine` this computer's default and move every inheriting agent onto it. */

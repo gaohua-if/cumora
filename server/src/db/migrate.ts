@@ -57,6 +57,9 @@ import {
   GOVERNANCE_MEMBERSHIP_HISTORY_SQL,
   governanceMembershipHistoryChecksum,
 } from './migrations/0011-governance-membership-history.js'
+import { ENGINE_DEFAULTS_SQL, engineDefaultsChecksum } from './migrations/0012-engine-defaults.js'
+import { AGENT_PROVIDER_PROFILE_SQL, agentProviderProfileChecksum } from './migrations/0013-agent-provider-profile.js'
+import { AGENT_ROUTING_CLAIMS_SQL, agentRoutingClaimsChecksum } from './migrations/0014-agent-routing-claims.js'
 
 /** Frozen data backfill embedded in migration 0001. Exported so its behavior
  * can be exercised against PostgreSQL without replaying the whole migration. */
@@ -2582,6 +2585,14 @@ async function applyGovernanceMembershipHistory(client: import('pg').PoolClient)
   await client.query(GOVERNANCE_MEMBERSHIP_HISTORY_SQL)
 }
 
+async function applyEngineDefaults(client: import('pg').PoolClient): Promise<void> {
+  await client.query(ENGINE_DEFAULTS_SQL)
+}
+
+async function applyAgentRoutingClaims(client: import('pg').PoolClient): Promise<void> {
+  await client.query(AGENT_ROUTING_CLAIMS_SQL)
+}
+
 const VERSIONED_MIGRATIONS: readonly VersionedMigration[] = [
   {
     ...SCHEMA_MIGRATIONS[0],
@@ -2650,6 +2661,24 @@ const VERSIONED_MIGRATIONS: readonly VersionedMigration[] = [
     sourceChecksum: governanceMembershipHistoryChecksum(),
     transactional: true,
     up: applyGovernanceMembershipHistory,
+  },
+  {
+    ...SCHEMA_MIGRATIONS[11],
+    sourceChecksum: engineDefaultsChecksum(),
+    transactional: true,
+    up: applyEngineDefaults,
+  },
+  {
+    ...SCHEMA_MIGRATIONS[12],
+    sourceChecksum: agentProviderProfileChecksum(),
+    transactional: true,
+    up: async (client) => { await client.query(AGENT_PROVIDER_PROFILE_SQL) },
+  },
+  {
+    ...SCHEMA_MIGRATIONS[13],
+    sourceChecksum: agentRoutingClaimsChecksum(),
+    transactional: true,
+    up: applyAgentRoutingClaims,
   },
 ]
 
