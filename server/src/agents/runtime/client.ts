@@ -191,6 +191,8 @@ export interface WorklogEntry {
  *  InProc impl + a stub HTTP impl; later sessions fill the HTTP impl
  *  in as the corresponding `/cli/*` server endpoints land. */
 export interface AgentRuntimeClient {
+  /** Resolve workspace cutover before reading any legacy persona/inbox/memory. */
+  taskMode(agentId: string): Promise<boolean>
   // === Read agent state ===
   /** Resolve the agent's persona (name / role / style / model / company).
    *  Returns null when the id isn't a real agent. */

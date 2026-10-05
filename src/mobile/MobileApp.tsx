@@ -18,6 +18,7 @@ import { initPushNotifications } from '@/lib/push'
 import { MobileParticipantInfo } from './MobileParticipantInfo'
 import { useSwipeBackProps } from './useSwipeBack'
 import { ViewBoundary } from './ViewBoundary'
+import { SettingsView } from '@/components/SettingsView'
 
 const ShippingWorkspace = lazy(() => import('@/components/ShippingWorkspace').then((module) => ({ default: module.ShippingWorkspace })))
 
@@ -160,6 +161,7 @@ export function MobileApp() {
   return (
     <div className="relative z-10 h-[100dvh] w-screen flex flex-col bg-paper">
       <main className="flex-1 relative overflow-hidden">
+        {view === 'settings' && <SettingsView />}
         {/* Top-level view switcher — was previously
             `<AnimatePresence mode="wait">`, which serializes exits
             before the next enter. Problem: if ANY nested exit got

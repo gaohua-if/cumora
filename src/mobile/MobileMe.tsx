@@ -111,6 +111,11 @@ export function MobileMe() {
       </div>
 
       <div className="flex-1 overflow-y-auto pb-20">
+        <Section title={t('nav.settings')}>
+          <button type="button" className="w-full rounded-xl border border-ink-100 bg-cloud p-4 text-left text-sm" onClick={() => useApp.getState().setView('settings')}>
+            群聊与 Agent 配置
+          </button>
+        </Section>
         {companies.length > 1 && (
           <Section title={t('mobileMe.workspace')}>
             <div className="bg-cloud rounded-[12px] p-2" style={{ border: '1px solid var(--ink-100)' }}>

@@ -1,3 +1,5 @@
+import { TaskService } from './tasks/service.js'
+import { TaskError } from './tasks/contracts.js'
 /**
  * Calendar — scheduled + recurring events shared by humans and agents.
  *
@@ -233,6 +235,18 @@ export async function dispatchEvent(event: CalendarEventRow, scheduledFor: Date)
 
   let conversationId: string | null = null
   try {
+    const taskService=new TaskService(pool)
+    if(await taskService.protectsLegacy(event.company_id)){
+      if(await taskService.mode(event.company_id)!=='TASK') throw new TaskError('TASK_WORKSPACE_PAUSED')
+      if(!event.target_conversation_id) throw new TaskError('TASK_CHANNEL_REQUIRED')
+      const binding=(await pool.query(`SELECT id FROM channel_agent_bindings WHERE company_id=$1 AND conversation_id=$2 AND agent_id=$3 AND status='ACTIVE'`,[event.company_id,event.target_conversation_id,event.assignee_id])).rows[0]
+      if(!binding) throw new TaskError('BINDING_INELIGIBLE')
+      if(event.is_private){const channel=(await pool.query(`SELECT kind FROM conversations WHERE company_id=$1 AND id=$2`,[event.company_id,event.target_conversation_id])).rows[0];if(channel?.kind!=='direct') throw new TaskError('PRIVATE_CALENDAR_AUDIENCE_DENIED',403)}
+      const task=await taskService.create({companyId:event.company_id,id:event.created_by},{channelId:event.target_conversation_id,bindingId:binding.id,objective:event.agent_prompt??event.title,ingressKey:`calendar:${event.id}:${scheduledFor.toISOString()}`,grantIds:[]})
+      await taskService.drive({companyId:event.company_id,id:event.created_by},task.id,'calendar')
+      await pool.query(`UPDATE calendar_dispatches SET status='dispatched',conversation_id=$2 WHERE id=$1`,[dispatchId,event.target_conversation_id])
+      return {status:'dispatched',conversationId:event.target_conversation_id}
+    }
     conversationId = await resolveTargetConversation(event)
     if (!conversationId) {
       await pool.query(

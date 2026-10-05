@@ -131,6 +131,7 @@ async function connectStream(agentId: string, url: string, token: string): Promi
       continue
     }
     if (evt.event === 'steer') {
+      if(await runtime.taskMode(agentId))continue
       state.firstWakeReceived = true
       // Mid-turn injection: the user just posted a message that the
       // SERVER decided this agent should see WITHOUT waiting for the

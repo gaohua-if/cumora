@@ -1572,6 +1572,7 @@ Treat the output as a private memo that will be appended to the agent's input. E
 }
 
 export async function runAgentTurn(agentId: string, options: AgentTurnOptions = {}): Promise<void> {
+  if (await runtime.taskMode(agentId)) return
   const persona = await runtime.loadPersona(agentId)
   if (!persona) return
 

@@ -1,0 +1,70 @@
+{
+  "deployedAtUtc": "2026-10-04 00:58:52 UTC",
+  "service": "cumora",
+  "publicOrigin": "http://192.168.28.113:5181",
+  "deployment": "Docker Compose standalone",
+  "image": "cumora-server:local",
+  "imageDigest": "sha256:c1e838f5b19a1d6a2261bc0d018b08894352efb8e66bb17ec17c9ec6ab3fc8c4",
+  "schema": {
+    "before": 14,
+    "after": 19,
+    "migrationsApplied": [
+      15,
+      16,
+      17,
+      18,
+      19
+    ],
+    "checksumVerified": true
+  },
+  "backup": {
+    "file": "/tmp/cumora-deploy-20261004/schema14-before-upgrade.dump",
+    "format": "PostgreSQL custom archive",
+    "permissions": "0600",
+    "directoryPermissions": "0700",
+    "archiveListVerified": true
+  },
+  "checks": {
+    "containerHealth": {
+      "server": "healthy",
+      "postgres": "healthy",
+      "redis": "healthy"
+    },
+    "http": {
+      "livez": 200,
+      "health": 200,
+      "homepage": 200,
+      "lanHomepage": 200,
+      "unauthenticatedTaskWorkspace": 401
+    },
+    "taskApiCacheControl": "private, no-store",
+    "spaAssetsMatchImage": true,
+    "taskUiIncluded": true,
+    "runtimeContractTests": {
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    "startupSchemaCompatibility": true,
+    "redisSubscriptionsReady": true
+  },
+  "workspaceMode": {
+    "default": "LEGACY",
+    "settingsRows": 0,
+    "taskModeActivated": false,
+    "activationGuide": "docs/TASK_EXECUTION.zh-CN.md"
+  },
+  "limitations": [
+    {
+      "capability": "embedding",
+      "observed": "Existing configured OpenAI credential rejected with HTTP 401 during startup memory backfill.",
+      "resolution": "Configure a valid credential for the existing embedding provider.",
+      "livePaidModelVerification": false
+    }
+  ],
+  "notes": [
+    "Deployment uses current workspace implementation, including uncommitted changes.",
+    "No production integration tests or task-mode activation were performed.",
+    "Schema rollback requires compatible application binaries; no down migrations were run."
+  ]
+}

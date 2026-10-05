@@ -1,0 +1,225 @@
+{
+  "createdAt": "2026-10-04T12:13:12.519Z",
+  "artifact": "docs/prototypes/configuration-workbench-v1.html",
+  "kind": "interactive prototype",
+  "passed": true,
+  "previewUrl": "http://192.168.28.113:5182/configuration-workbench-v1.html",
+  "reviewMethod": "Actual headless Chrome/CDP UI actions and DOM/localStorage assertions",
+  "viewports": [
+    {
+      "width": 1440,
+      "height": 1000,
+      "mobile": false
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "mobile": true
+    }
+  ],
+  "checks": [
+    {
+      "name": "Skill selection saves to browser and increments Agent version",
+      "passed": true
+    },
+    {
+      "name": "MCP resource added using form",
+      "passed": true
+    },
+    {
+      "name": "Invalid domain with URL scheme rejected; valid domain added",
+      "passed": true
+    },
+    {
+      "name": "Bundle v2 contents remain pinned after resource update creates v3",
+      "passed": true
+    },
+    {
+      "name": "Explicit channel upgrade uses and persists bundle v3",
+      "passed": true
+    },
+    {
+      "name": "Binding instructions and additional Skill appear in effective preview",
+      "passed": true
+    },
+    {
+      "name": "Member resource subset limits preview to engineering bundle",
+      "passed": true
+    },
+    {
+      "name": "Unsaved object switch presents save/discard/continue choices",
+      "passed": true
+    },
+    {
+      "name": "Group member edit preserves base Agent configuration",
+      "passed": true
+    },
+    {
+      "name": "Full document reload reads saved member configuration",
+      "passed": true
+    },
+    {
+      "name": "Mobile resource selection saves channel reference",
+      "passed": true
+    },
+    {
+      "name": "Mobile and desktop have no horizontal overflow",
+      "passed": true
+    },
+    {
+      "name": "Hash navigation updates selected page",
+      "passed": true
+    },
+    {
+      "name": "Solo Aida channel and new group retain default Aida",
+      "passed": true
+    },
+    {
+      "name": "Skill library content editor renders",
+      "passed": true
+    },
+    {
+      "name": "LAN preview shows initial group and both referenced bundles",
+      "passed": true
+    }
+  ],
+  "applicationExceptions": [],
+  "failedApiResponses": [],
+  "prototypeApiCalls": 0,
+  "corrections": [
+    {
+      "issue": "Changing only URL hash originally did not re-render the page",
+      "resolution": "Added hashchange handler; verified navigation and full-document persistence after correction"
+    }
+  ],
+  "references": [
+    {
+      "url": "https://www.youtube.com/watch?v=JhipXUs1Y98&t=87s",
+      "status": "User-supplied video; fetch/cache miss and browser ERR_NETWORK_CHANGED. Not watched."
+    },
+    {
+      "url": "https://support.claude.com/en/articles/15594475-what-is-claude-tag",
+      "status": "Read official reference"
+    },
+    {
+      "url": "https://claude.com/docs/claude-tag/admins/add-connections",
+      "status": "Read official reference"
+    },
+    {
+      "url": "https://claude.com/docs/claude-tag/admins/attach-to-scope",
+      "status": "Read official reference"
+    }
+  ],
+  "finalBrowserEvents": [
+    {
+      "ok": true,
+      "op": "navigate",
+      "result": {
+        "frameId": "57681E08BF2AC2B3BBEA9474D8EFA5B4",
+        "loaderId": "B9F2772C1D1BB0993CE8591E36871706",
+        "isDownload": false
+      }
+    },
+    {
+      "ok": true,
+      "op": "wait",
+      "result": true
+    },
+    {
+      "ok": true,
+      "op": "eval",
+      "result": {
+        "previewOrigin": "http://192.168.28.113:5182",
+        "initialGroup": "产品研发",
+        "initialResourceBundles": 2,
+        "desktopOverflow": false,
+        "skillsLibrarySize": 6
+      }
+    },
+    {
+      "ok": true,
+      "op": "screenshot",
+      "result": {
+        "path": "docs/prototypes/configuration-workbench-v1/screenshots/20-final-desktop-channel.png"
+      }
+    },
+    {
+      "ok": true,
+      "op": "viewport",
+      "result": {}
+    },
+    {
+      "ok": true,
+      "op": "screenshot",
+      "result": {
+        "path": "docs/prototypes/configuration-workbench-v1/screenshots/15-mobile-access.png"
+      }
+    },
+    {
+      "ok": true,
+      "op": "eval",
+      "result": {
+        "mobileNavItems": [
+          "Agent",
+          "Access Bundles",
+          "群聊",
+          "Skill 库"
+        ],
+        "noHorizontalOverflow": true
+      }
+    },
+    {
+      "ok": true,
+      "op": "errors",
+      "result": {
+        "errors": [],
+        "network": []
+      }
+    },
+    {
+      "ok": true
+    }
+  ],
+  "limitations": [
+    "Local example data only; no production API changes or deployment at 5181",
+    "No real MCP/GitHub connection, credential or external operation verification",
+    "Source specification/data flow document unchanged"
+  ],
+  "sourceSha256": {
+    "docs/prototypes/configuration-workbench-v1.html": "339e87793c5f98f515b8700c33919ddaf6c7ffda9e753d142b9e7c5fb2bbae81",
+    "docs/prototypes/configuration-workbench-v1/README.zh-CN.md": "155c9bf744a67e65eab0e64fbb9712a4f981b5c993364362a06d19b1dff45b30",
+    "doc/multi-agent-concepts-and-data-flow.md": "809a9c159f46f50ab7b47b3fd03095430ccbf4a65ff65e82e6eb3ebf5afd6d11"
+  },
+  "screenshotSha256": {
+    "docs/prototypes/configuration-workbench-v1/screenshots/01-agent-overview.png": "32986add0096b78800c1a3103204776ce9f33c9f2289b05e0f4fa04c5364ade7",
+    "docs/prototypes/configuration-workbench-v1/screenshots/02-agent-prompt.png": "b41245f41f7fcc4cd3261c2edb72bf9ed796e2641908862070d5a1e1500bdcd7",
+    "docs/prototypes/configuration-workbench-v1/screenshots/03-agent-skills.png": "2a608e0e5ea06e4f1cf308d99f5d08e1f94cc2d539b763e03bfc5f1a8bc001fe",
+    "docs/prototypes/configuration-workbench-v1/screenshots/04-skill-selector.png": "9cf88906fbcbd360472782ed89965fbe693410935de06057f71730f0b34f9ee5",
+    "docs/prototypes/configuration-workbench-v1/screenshots/05-bundle-overview.png": "5870e3f5b25629d5d5a4c505397ff0cdd3ec8e0656b7c743a256073edee03f73",
+    "docs/prototypes/configuration-workbench-v1/screenshots/06-bundle-mcp.png": "3f0c288251ace79032244c127517097b32b1e8237f17a6901555ab8a4928c1df",
+    "docs/prototypes/configuration-workbench-v1/screenshots/07-bundle-domains.png": "98ebf268930a963f2d5dc57d6e8ee81b7356cbddc8282d16220d77a7b4bf2e5a",
+    "docs/prototypes/configuration-workbench-v1/screenshots/08-bundle-github.png": "6dbd75b51520026847eb20f52f636d173d74bdc7ec29e8f12fbaf2bd0b6bbb36",
+    "docs/prototypes/configuration-workbench-v1/screenshots/09-github-editor.png": "b7d62d98a308eb642ba715f442d819d9c2a2e9ef395a1fcf93a7c8c59799edd0",
+    "docs/prototypes/configuration-workbench-v1/screenshots/10-channel-general.png": "7ea8aec566796d963daf9ae9967db696d40f3b2ceb055a8880fe2e9372b76804",
+    "docs/prototypes/configuration-workbench-v1/screenshots/11-channel-access.png": "65f6a32e9afe9904cdd5c59b56b8c1eb471c26f026d35cd47bc526d412882fc4",
+    "docs/prototypes/configuration-workbench-v1/screenshots/12-effective-preview.png": "06d2836a14ed1d194fadc2edef00627edc5394629d6ab74ecc4e7507293847ed",
+    "docs/prototypes/configuration-workbench-v1/screenshots/13-channel-members.png": "9ea973a24458ce56e3a6c7d9152c61d2b7e8d2dba8f7291dec2b365c27a45a7c",
+    "docs/prototypes/configuration-workbench-v1/screenshots/14-mobile-members.png": "4a58eebe0f805b9e05a1918a9a3e9492bbfc67985c8a47ce1c0752a3b117629d",
+    "docs/prototypes/configuration-workbench-v1/screenshots/15-mobile-access.png": "d1aecfa36625731b9e6fbbfd9bcd72fec161170bdd065db84c8dee6e17442c3d",
+    "docs/prototypes/configuration-workbench-v1/screenshots/16-mobile-bundle-selector.png": "16d286cc5176250de53ba409f4845867ce8287f0d33b9fc1fbb4128b43384c3c",
+    "docs/prototypes/configuration-workbench-v1/screenshots/17-mobile-solo.png": "1e95d69721d57deac07d2e2dbab3fd1bf474084c9a4fe23b33f0b022249fd647",
+    "docs/prototypes/configuration-workbench-v1/screenshots/18-mobile-general.png": "e2189812fe34ebe4e916983d67423900fe96500495eda56f035603a22d5882e7",
+    "docs/prototypes/configuration-workbench-v1/screenshots/19-skill-library.png": "39d85f9559c7601dd37cbfb968a398ab1a9d9517591f77309c518d3ffb6e1ccf",
+    "docs/prototypes/configuration-workbench-v1/screenshots/20-final-desktop-channel.png": "a1438ecf2d444c77912f146733aa71798184d09bc3ed0dc5c29b2632767a8dfb"
+  },
+  "staticChecks": {
+    "javascriptSyntax": {
+      "command": "node --check /tmp/cumora-configuration-prototype.js",
+      "exitCode": 0
+    },
+    "gitDiffWhitespace": {
+      "command": "git diff --check",
+      "exitCode": 0
+    }
+  }
+}

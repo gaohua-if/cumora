@@ -10,6 +10,7 @@
  */
 
 import { pool } from '../db/pool.js'
+import { requireLegacyAgent,withoutTaskMessages } from '../tasks/legacy-guard.js'
 import type { PoolClient } from 'pg'
 import { storage, freshenAttachmentUrl, type StoredAttachment } from '../storage.js'
 import { env } from '../env.js'
@@ -750,7 +751,7 @@ async function cmdMessages(parsed: ParsedArgs): Promise<CliResult> {
     params,
   )
   for (const row of rows) await freshenRowAttachment(row)
-  const inOrder = rows.reverse()
+  const inOrder = (await withoutTaskMessages(rows)).reverse()
   // Advance the Redis "seen" boundary — `cumora messages` just showed
   // the agent these rows, so the highest seq here counts as "what I've
   // seen" for the freshness preflight on its next `cumora reply`. Without
@@ -896,6 +897,7 @@ async function cmdSearch(parsed: ParsedArgs): Promise<CliResult> {
       ORDER BY m.created_at DESC LIMIT ${limitParam}`,
     params,
   )
+  rows.splice(0,rows.length,...await withoutTaskMessages(rows))
   for (const row of rows) await freshenRowAttachment(row)
   if (parsed.flags.json) return ok(JSON.stringify(rows, null, 2))
   if (rows.length === 0) return ok(`(no matches for "${query}"${inConvo ? ` in ${inConvo}` : ''})`)
@@ -1101,6 +1103,7 @@ async function loadInbox(agentId: string): Promise<InboxItem[]> {
       LIMIT 200`,
     [agentId],
   )
+  rows.splice(0,rows.length,...await withoutTaskMessages(rows))
   for (const row of rows) await freshenRowAttachment(row)
   return rows
 }
@@ -1203,7 +1206,7 @@ async function cmdGlance(parsed: ParsedArgs): Promise<CliResult> {
       LIMIT 12`,
     [convoId, me, companyId],
   )
-  const recent = rows.reverse()
+  const recent = (await withoutTaskMessages(rows)).reverse()
 
   // Advance the Redis "seen" boundary — glance just showed the agent
   // these messages, so they count as "seen" for the freshness preflight
@@ -6586,6 +6589,8 @@ export async function runCli(argv: string[]): Promise<CliResult> {
     parsed.flags.as = asFlag
   }
   try {
+    const actingAgent = String(parsed.flags.as ?? process.env.CUMORA_AGENT_ID ?? '')
+    if (actingAgent) await requireLegacyAgent(actingAgent)
     switch (sub) {
       case 'help':
       case '--help':

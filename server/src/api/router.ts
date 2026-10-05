@@ -1,3 +1,4 @@
+import { TaskExecutionService } from '../tasks/execution.js'
 import { Router, json, type Request, type Response, type NextFunction } from 'express'
 import { isProviderProfileId } from '../agents/computer/provider-profiles.js'
 import type { PoolClient } from 'pg'
@@ -6,6 +7,11 @@ import {
   storageKeyFromPublicUrl, messageAttachmentStorageKey,
 } from '../storage.js'
 import { pool } from '../db/pool.js'
+import { createTasksRouter } from './tasks-router.js'
+import { taskService } from '../tasks/legacy-guard.js'
+import { DefaultAidaService } from '../tasks/default-aida.js'
+import { TaskIngressService } from '../tasks/ingress.js'
+import { TaskError,canonicalJson } from '../tasks/contracts.js'
 import { CH_MESSAGE_NEW, CH_REACTIONS, CH_CONVO_UPDATED, CH_DOCS, CH_TYPING, CH_CALENDAR_EVENTS, CH_BOARDS, CH_STATUS, CH_WORKSPACES, publish } from '../redis.js'
 import { enqueueBroadcast, nudgeRealtimeOutbox, withOutboxTransaction } from '../realtime-outbox.js'
 import { enqueueWorkspaceCleanup, nudgeWorkspaceCleanupWorker } from '../workspace-cleanup.js'
@@ -258,6 +264,18 @@ async function companyPlanTier(companyId: string, db: Queryable = pool): Promise
     [companyId],
   )
   return normalizeTier(rows[0]?.tier)
+}
+
+const defaultAida = new DefaultAidaService(taskService, async companyId => {
+  const tier = await companyPlanTier(companyId)
+  return { tier, maxActiveAgents: TIER_LIMITS[tier].agentsPerCompany }
+})
+async function aidaRequest<T>(run: () => Promise<T>): Promise<T> {
+  try { return await run() }
+  catch (error) {
+    if (error instanceof AgentCreationError || error instanceof TaskError) throw new HttpError(error.status, error.message)
+    throw error
+  }
 }
 
 async function companyHumanSeatInfo(companyId: string, db: Queryable = pool): Promise<{
@@ -1904,6 +1922,7 @@ api.delete('/companies/:id/members/:userId', safe(async (req, res) => {
   let recipientUserIds: string[] = []
   try {
     await client.query('BEGIN')
+    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,1))', [`task:${companyId}`])
     const { rows: actors } = await client.query<{ role: WorkspaceMemberRole; owner_user_id: string | null }>(
       `SELECT actor.role, c.owner_user_id
          FROM companies c
@@ -2027,6 +2046,7 @@ api.delete('/companies/:id', safe(async (req, res) => {
   let nextCompanyId: string | null = null
   try {
     await client.query('BEGIN')
+    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,1))', [`task:${companyId}`])
     const { rows: companies } = await client.query<{
       name: string; owner_user_id: string | null; role: WorkspaceMemberRole
     }>(
@@ -2048,6 +2068,11 @@ api.delete('/companies/:id', safe(async (req, res) => {
     }
     const governed = await client.query(`SELECT 1 FROM board_cards c JOIN boards b ON b.id=c.board_id WHERE b.company_id=$1 AND c.governance_mode='GOVERNED' LIMIT 1`, [companyId])
     if (governed.rows[0]) throw new HttpError(409, 'workspace contains retained governance records; archive and use controlled retention disposal')
+    if(await taskService.mode(companyId)!=='LEGACY' || await client.query(`SELECT to_regclass('public.channel_tasks') AS table_name`).then(r=>r.rows[0].table_name)){
+      const tasks=await client.query(`SELECT 1 FROM channel_tasks WHERE company_id=$1 LIMIT 1`,[companyId])
+      if(tasks.rowCount) throw new HttpError(409,'workspace contains retained task records; use controlled retention disposal')
+      for(const table of ['task_authorization_events','task_runtime_admissions','channel_access_refs','access_bundle_versions','access_grants','access_connections','channel_agent_bindings','agent_definition_versions','task_workspace_settings']) await client.query(`DELETE FROM ${table} WHERE company_id=$1`,[companyId])
+    }
     const { rows: alternatives } = await client.query<{ company_id: string }>(
       `SELECT company_id FROM company_members
         WHERE user_id = $1 AND company_id <> $2
@@ -3660,6 +3685,8 @@ api.get('/conversations', async (req, res) => {
   if (rows.length === CONVERSATION_LIST_LIMIT) {
     console.warn(`[conversations] ${tenant} hit the ${CONVERSATION_LIST_LIMIT}-row sidebar ceiling; older rows are being withheld`)
   }
+  const taskExecution=new TaskExecutionService(taskService)
+  for(const row of rows)if(row.lastMessage)await taskExecution.redactMessage(tenant,row.lastMessage)
   res.json(rows)
 })
 
@@ -3667,6 +3694,14 @@ api.get('/conversations', async (req, res) => {
  * Create a new group conversation. Body: { title, members[], subtitle? }.
  * The caller is auto-included; at least one other member is required.
  */
+api.post('/conversations/default-aida', async (req, res) => {
+  const { userId, companyId } = await requireCompany(req)
+  res.json({ aidaId: await aidaRequest(() => defaultAida.identity({ id: userId, companyId })) })
+})
+api.post('/conversations/:id/default-aida', async (req, res) => {
+  const { userId, companyId } = await requireCompany(req)
+  res.json(await aidaRequest(() => defaultAida.initialize({ id: userId, companyId }, String(req.params.id))))
+})
 api.post('/conversations', async (req, res) => {
   const { userId: me, companyId: tenant } = await requireCompany(req)
   const title = String(req.body?.title ?? '').trim().slice(0, 80)
@@ -3676,14 +3711,17 @@ api.post('/conversations', async (req, res) => {
   const memberSet = new Set<string>()
   for (const m of rawMembers) if (typeof m === 'string') memberSet.add(m.trim())
   memberSet.add(me)
-  const members = [...memberSet].filter(Boolean)
   if (!title) { res.status(400).json({ error: 'title required' }); return }
+  const aidaId = await aidaRequest(() => defaultAida.identity({ companyId: tenant, id: me }))
+  memberSet.add(aidaId)
+  const members = [...memberSet].filter(Boolean)
   if (members.length < 2) { res.status(400).json({ error: 'pick at least one teammate' }); return }
 
   const id = `g-${randomUUID().slice(0, 8)}`
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
+    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,1))', [`task:${tenant}`])
     const participantIds = [...members].sort()
     const { rows: active } = await client.query<{ id: string }>(
       `SELECT id FROM participants
@@ -3711,6 +3749,7 @@ api.post('/conversations', async (req, res) => {
       `INSERT INTO conversation_counters (conversation_id, next_sequence) VALUES ($1, 1)`,
       [id],
     )
+    await defaultAida.binding(client, { companyId: tenant, id: me }, id, aidaId)
     await client.query('COMMIT')
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {})
@@ -3981,9 +4020,15 @@ api.post('/conversations/:id/members', async (req, res) => {
   // back loses a concurrent membership change, and the `joined` row below is
   // posted either way — so the transcript would record a join that the
   // members column does not agree with.
-  const mutation = await addConversationMember({
-    conversationId: id, memberId: newMember, actorId: me, companyId: tenant,
-  })
+  let mutation
+  try {
+    mutation = await addConversationMember({
+      conversationId: id, memberId: newMember, actorId: me, companyId: tenant,
+    })
+  } catch (error) {
+    if (error instanceof TaskError) { res.status(error.status).json({ error: error.code }); return }
+    throw error
+  }
   if (!mutation) { res.status(403).json({ error: 'membership changed; add cancelled' }); return }
   res.json({ ok: true, members: mutation.members })
 })
@@ -4222,6 +4267,8 @@ api.get('/conversations/:id/messages', async (req, res) => {
     // Pulled DESC for the LIMIT to land on the *newest* `limit` rows; flip
     // back to ASC so the renderer's append-only assumptions still hold.
     rows.reverse()
+    const taskExecution=new TaskExecutionService(taskService)
+    for(const row of rows)await taskExecution.redactMessage(tenant,row)
     // Re-sign every persisted attachment URL with a fresh expiry so
     // historical messages don't break after the original signature's TTL.
     // No-op for attachments without a stored `key` (legacy local mode).
@@ -4271,6 +4318,9 @@ api.post('/conversations/:id/messages', async (req, res) => {
   const { userId: me, companyId: tenant } = await requireCompany(req)
   const { id } = req.params
   const body = String(req.body?.body ?? '').trim()
+  const taskRef = req.body?.taskId
+  if (taskRef !== undefined && (typeof taskRef !== 'string' || !taskRef || taskRef.length > 200)) { res.status(400).json({ error: 'INVALID_TASK_REFERENCE' }); return }
+  let resolvedTaskId: string | null = null
   const rawAttachment = req.body?.attachment
   let attachment: AttachmentPayload | null = null
   if (rawAttachment && typeof rawAttachment === 'object') {
@@ -4411,6 +4461,10 @@ api.post('/conversations/:id/messages', async (req, res) => {
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
+    // Task queries take this lock before membership/conversation locks. Keep
+    // message ingress in the same order, including while a workspace cuts over.
+    // Advisory locks do not depend on the task schema being installed.
+    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,1))', [`task:${tenant}`])
     // Final write authorization is transactional. Locking the actor before
     // the conversation matches membership mutation lock order, so a kick,
     // offboard, or tenant move either happens before this write (and rejects
@@ -4456,7 +4510,8 @@ api.post('/conversations/:id/messages', async (req, res) => {
           WHERE m.id = $1 AND m.conversation_id = $2`,
         [quotedMessageId, id, tenant],
       )
-      if (qr[0]) {
+      const taskSchema=(await client.query(`SELECT to_regclass('task_deliveries') AS tasks`)).rows[0].tasks
+      if (qr[0] && (!taskSchema || await new TaskExecutionService(taskService).deliveryVisibleInTransaction(client,tenant,qr[0].id))) {
         resolvedQuotedId = qr[0].id
         quotedSummary = {
           id: qr[0].id,
@@ -4497,7 +4552,13 @@ api.post('/conversations/:id/messages', async (req, res) => {
       : undefined)
     if (!persisted) throw new Error('message insert returned no row')
     insertedNew = Boolean(inserted.rows[0])
+    if(!insertedNew && await taskService.mode(tenant)!=='LEGACY'){
+      const original=(await client.query(`SELECT body,attachment FROM messages WHERE id=$1 AND company_id=$2`,[persisted.id,tenant])).rows[0]
+      if(original.body!==body || canonicalJson(original.attachment)!==canonicalJson(attachment??null))throw new TaskError('INGRESS_KEY_CONFLICT')
+      resolvedTaskId=await new TaskIngressService(taskService).message(client,{companyId:tenant,id:me},persisted.id,taskRef)
+    }
     if (insertedNew) {
+      if (await taskService.mode(tenant) !== 'LEGACY') resolvedTaskId = await new TaskIngressService(taskService).message(client, { companyId: tenant, id: me }, persisted.id, taskRef)
       await client.query(
         `UPDATE conversations SET updated_at = NOW() WHERE id = $1 AND company_id = $2`,
         [id, tenant],
@@ -4506,6 +4567,7 @@ api.post('/conversations/:id/messages', async (req, res) => {
         type: 'message.new',
         conversationId: id,
         companyId: tenant,
+        taskId: resolvedTaskId ?? undefined,
         message: {
           id: persisted.id, conversationId: id, authorId: me,
           kind: 'text', body, sequence: persisted.sequence, at: new Date().toISOString(),
@@ -4520,6 +4582,7 @@ api.post('/conversations/:id/messages', async (req, res) => {
     if (insertedNew) nudgeRealtimeOutbox()
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {})
+    if (error instanceof TaskError) { res.status(error.status).json({ error: error.code }); return }
     throw error
   } finally {
     client.release()
@@ -4530,7 +4593,7 @@ api.post('/conversations/:id/messages', async (req, res) => {
   deliveryMessageId = messageId
   if (!insertedNew) {
     logDelivery('message.reused', { sequence: persistedSequence })
-    res.status(202).json({ id: messageId, sequence: persistedSequence })
+    res.status(202).json({ id: messageId, sequence: persistedSequence,taskId:resolvedTaskId??undefined })
     return
   }
   logDelivery('message.committed', { sequence: persistedSequence })
@@ -4574,6 +4637,7 @@ api.post('/conversations/:id/messages', async (req, res) => {
   res.status(202).json({
     id: messageId,
     sequence: persistedSequence,
+    taskId: resolvedTaskId ?? undefined,
     quotedMessageId: resolvedQuotedId ?? undefined,
     quoted: quotedSummary ?? undefined,
   })
@@ -5165,6 +5229,8 @@ api.get('/conversations/:id/messages/:rootId/replies', async (req, res) => {
         ORDER BY m.sequence ASC`,
       [id, rootId, tenant],
     )
+    const taskExecution=new TaskExecutionService(taskService)
+    for(const row of rows)await taskExecution.redactMessage(tenant,row)
     for (const row of rows) {
       if (!row.attachment) continue
       try { row.attachment = await freshenAttachmentUrl(row.attachment) }
@@ -5574,6 +5640,9 @@ api.get('/search', async (req, res) => {
   const [participants, rooms, groups, messages] = await Promise.all([
     participantsP, roomsP, groupsP, messagesP,
   ])
+  const visibleMessages=[]
+  const taskExecution=new TaskExecutionService(taskService)
+  for(const message of messages.rows)if(await taskExecution.deliveryVisible(tenant,String(message.id)))visibleMessages.push(message)
 
   // Server-side snippet so the client doesn't ship full message bodies in
   // search results. We pick a ±60-char window around the first match.
@@ -5592,7 +5661,7 @@ api.get('/search', async (req, res) => {
     participants: participants.rows,
     rooms: rooms.rows,
     groups: groups.rows,
-    messages: messages.rows.map((m: { body: string } & Record<string, unknown>) => ({
+    messages: visibleMessages.map((m: { body: string } & Record<string, unknown>) => ({
       ...m,
       body: undefined,
       snippet: snippetOf(m.body ?? ''),
@@ -5682,6 +5751,8 @@ api.get('/peek/agent-chats/:id/messages', async (req, res) => {
        ORDER BY sequence ASC`,
     [id],
   )
+  const taskExecution=new TaskExecutionService(taskService)
+  for(const row of rows)await taskExecution.redactMessage(tenant,row)
   res.json(rows)
 })
 
@@ -5695,7 +5766,9 @@ api.post('/conversations/:id/convene', async (req, res) => {
   // activity in rooms they don't belong to.
   const { userId: me, companyId: tenant } = await requireCompany(req)
   const topic = String(req.body?.topic ?? 'live work session')
-  const session = await startConvene({ conversationId: id, companyId: tenant, startedBy: me, topic })
+  let session
+  try{session=await startConvene({ conversationId: id, companyId: tenant, startedBy: me, topic })}
+  catch(error){if(error instanceof TaskError){res.status(error.status).json({error:error.code});return}throw error}
   res.json(session)
 })
 
@@ -7505,6 +7578,7 @@ api.use('/shipping', createShippingRouter({ pool, requireCompany, requireCompany
 // tenant/session gates as the rest of the API; its domain tables are additive
 // and ordinary Collaboration Cards never enter these paths implicitly.
 api.use('/governance', createGovernanceRouter({ pool, requireCompany, requireCompanyRole }))
+api.use('/tasks', createTasksRouter({ pool, requireCompany }))
 
 // Global error handler — must come after all routes. HttpError → status code.
 api.use(errorHandler)

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { type ApiWorkspaceMember, api, ws } from '@/api/client'
 import { useT } from '@/lib/i18n'
 import { type AuthCompany, useAuth } from '@/stores/auth'
+import { TaskSettings } from './TaskSettings'
 
 interface Props {
   company: AuthCompany
@@ -184,6 +185,8 @@ export function WorkspaceSettingsModal({ company, companyCount, onInvite, onClos
             </div>
           )}
         </section>
+
+        {['owner', 'admin'].includes(company.role) && <TaskSettings key={company.id} companyId={company.id} />}
 
         {company.role === 'owner' && (
           <section className="m-5 mt-1 rounded-[12px] border border-coral/35 bg-coral-soft/15 p-4">

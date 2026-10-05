@@ -44,6 +44,8 @@ import { inprocClient } from './inproc-client.js'
 import { type AgentRuntimeClaims, verifyAgentToken } from './jwt.js'
 import { attachWakeStream, } from './wake-bus.js'
 import { pool } from '../../db/pool.js'
+import { taskService } from '../../tasks/legacy-guard.js'
+import { attachTaskRuntimeEndpoints } from '../../tasks/runtime-endpoints.js'
 
 export type { WakeEvent } from './wake-bus.js'
 
@@ -109,6 +111,10 @@ async function authMiddleware(req: RuntimeRequest, res: Response, next: NextFunc
   }
 
   req.agent = claims
+  if (req.path !== '/task-mode' && !req.path.startsWith('/tasks/') && !/^\/runs\/[^/]+\/finish$/.test(req.path) && await taskService.protectsLegacy(claims.companyId)) {
+    res.status(403).json({ error: 'TASK_CONTEXT_REQUIRED' })
+    return
+  }
   next()
 }
 
@@ -131,6 +137,7 @@ function withAgent(
 
 export const runtimeRouter: Router = Router()
 runtimeRouter.use(authMiddleware as never)
+runtimeRouter.get('/task-mode', withAgent(async (c, _req, res) => { res.json(await taskService.protectsLegacy(c.companyId)) }))
 // JWT signature, tenant claim, and exact current Agent placement are checked
 // before any body parser reads JSON. Most runtime calls are small; the FUSE
 // whole-file write endpoint installs its compatibility parser at the route.
@@ -144,12 +151,13 @@ runtimeRouter.use((req, res, next) => {
 })
 
 // ─── wake stream: server pushes events to the agent's long-running pod ─
+attachTaskRuntimeEndpoints(runtimeRouter, withAgent as never)
 
 runtimeRouter.get('/wake-stream', withAgent(async (c, _req, res) => {
   await attachWakeStream(c.sub, res, {
     // The HTTP middleware validates at connection time. Re-check before every
     // event as well because this response can remain open across a tenant move.
-    authorize: () => isRuntimeAgentAuthorized(c),
+    authorize: async () => await isRuntimeAgentAuthorized(c) && !await taskService.protectsLegacy(c.companyId),
   })
   // Don't end — attachWakeStream keeps the response open until the
   // client disconnects.

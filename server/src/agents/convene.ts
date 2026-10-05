@@ -8,6 +8,8 @@ import { CH_CONVENE, publish } from '../redis.js'
 import { getPersona, buildSystemPrompt } from './personas.js'
 import { setStatus } from '../status.js'
 import { companyIdForConveneSession } from '../tenant.js'
+import { taskService,withoutTaskMessages } from '../tasks/legacy-guard.js'
+import { TaskError } from '../tasks/contracts.js'
 
 interface SessionRow {
   id: string
@@ -132,6 +134,8 @@ export async function startConvene(args: {
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
+    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,1))', [`task:${args.companyId}`])
+    if(await taskService.protectsLegacy(args.companyId))throw new TaskError('TASK_CONTEXT_REQUIRED',403)
     const actor = await client.query(
       `SELECT id FROM participants
         WHERE id = $1 AND company_id = $2
@@ -265,6 +269,7 @@ async function runAgentTurn(args: {
   agentId: string
   topic: string
 }): Promise<void> {
+  if(await taskService.protectsLegacy(args.companyId))return
   const snapshot = await loadAuthorizedTurnSnapshot(args)
   if (!snapshot) return
   const persona = await getPersona(args.agentId)
@@ -285,6 +290,7 @@ Topic of this convene: ${args.topic}`
     conversationId: args.session.conversation_id,
     extras: { sessionId: args.session.id, topic: args.topic.slice(0, 120) },
   })
+  if(await taskService.protectsLegacy(args.companyId))return
   const r = await client.responses.create({
     // A convene speech is the agent's real spoken contribution that humans
     // read — a real task, so the big model is sanctioned here too.
@@ -298,6 +304,7 @@ Topic of this convene: ${args.topic}`
     max_output_tokens: 3000,
     reasoning: { effort: 'low' },
   })
+  if(await taskService.protectsLegacy(args.companyId))return
   const body = sanitizeToolCallMarkup(r.output_text ?? '').trim()
   if (body) {
     await appendTranscript({ sessionId: args.session.id, authorId: args.agentId, kind: 'text', body })
@@ -353,9 +360,9 @@ async function loadAuthorizedTurnSnapshot(args: {
       return null
     }
     const { rows: contextRows } = await client.query<{
-      author_id: string; author_name: string; body: string
+      id:string;author_id: string; author_name: string; body: string
     }>(
-      `SELECT m.author_id, COALESCE(p.name, m.author_id) AS author_name, m.body
+      `SELECT m.id,m.author_id, COALESCE(p.name, m.author_id) AS author_name, m.body
          FROM messages m
          LEFT JOIN participants p ON p.id = m.author_id AND p.company_id = m.company_id
         WHERE m.conversation_id = $1 AND m.company_id = $2
@@ -375,7 +382,7 @@ async function loadAuthorizedTurnSnapshot(args: {
     )
     await client.query('COMMIT')
     return {
-      groundingHistory: contextRows.reverse().map((row): ResponseInputItem => ({
+      groundingHistory: (await withoutTaskMessages(contextRows)).reverse().map((row): ResponseInputItem => ({
         role: 'user',
         content: `[${row.author_name}]: ${row.body}`,
       })),
@@ -402,6 +409,8 @@ function sanitizeToolCallMarkup(s: string): string {
 }
 
 async function classifyDecision(args: { sessionId: string; topic: string }): Promise<{ headline: string; body: string } | null> {
+  const tenant = (await companyIdForConveneSession(args.sessionId)) ?? null
+  if(tenant && await taskService.protectsLegacy(tenant))return null
   const { rows } = await pool.query<{ author_id: string; body: string }>(
     `SELECT author_id, body FROM convene_transcript
       WHERE session_id = $1 AND kind IN ('text','thought')
@@ -419,12 +428,12 @@ async function classifyDecision(args: { sessionId: string; topic: string }): Pro
   const transcript = rows.map((r) => `${nameByAuthor.get(r.author_id) ?? r.author_id}: ${r.body}`).join('\n')
 
   try {
-    const tenant = (await companyIdForConveneSession(args.sessionId)) ?? null
     const client = await getTrackedLlmClient({
       purpose: 'convene-decision',
       companyId: tenant,
       extras: { sessionId: args.sessionId, topic: args.topic.slice(0, 120) },
     })
+    if(tenant && await taskService.protectsLegacy(tenant))return null
     const r = await client.responses.create({
       model: env.OPENAI_MODEL_SUPPORT,
       instructions: 'Reply ONLY with strict JSON: {"reached": boolean, "headline": "string", "body": "string"}. headline ≤ 12 words. body ≤ 40 words.',
@@ -433,6 +442,7 @@ async function classifyDecision(args: { sessionId: string; topic: string }): Pro
       max_output_tokens: 1200,
       reasoning: { effort: 'low' },
     })
+    if(tenant && await taskService.protectsLegacy(tenant))return null
     const parsed = JSON.parse(r.output_text ?? '{}') as { reached?: boolean; headline?: string; body?: string }
     if (parsed.reached && parsed.headline && parsed.body) {
       return { headline: parsed.headline, body: parsed.body }

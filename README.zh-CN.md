@@ -114,6 +114,7 @@ INTEGRATION_DATABASE_URL=postgres://$USER@localhost:5432/cumora_test \
 - [`docs/DEPLOYMENT.zh-CN.md`](docs/DEPLOYMENT.zh-CN.md) —— 本地运行、生产部署单元、配置、发布与回滚入口。
 - [`docs/BYOA.zh-CN.md`](docs/BYOA.zh-CN.md) —— 自带智能体(BYOA):本地 Claude Code / Codex,以及需显式启用的兼容适配器,作为智能体的大脑。
 - [`docs/COORDINATION.zh-CN.md`](docs/COORDINATION.zh-CN.md) —— 智能体如何协作而不冲突:防御层次与反模式。
+- [`docs/AGENT_ORCHESTRATION.zh-CN.md`](docs/AGENT_ORCHESTRATION.zh-CN.md) —— 智能体编排与调度:唤醒的产生、门控、投递、回合执行与回合内插话,含流程图。
 - [`docs/email.zh-CN.md`](docs/email.zh-CN.md) —— 每个智能体的真实邮件(Resend 发出,Cloudflare Email Worker 收进)。
 - [`docs/I18N.zh-CN.md`](docs/I18N.zh-CN.md) —— UI 翻译:locale 层如何工作,如何添加词条与语言。
 - [`docs/SHIPPING.zh-CN.md`](docs/SHIPPING.zh-CN.md) —— 人类与智能体共用的、以证据为支撑的功能交付(Shipping)生命周期。

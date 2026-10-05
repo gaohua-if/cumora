@@ -1,0 +1,182 @@
+{
+  "date": "2026-10-04",
+  "timezone": "Asia/Shanghai",
+  "completedAtUtc": "2026-10-04 05:35:35 UTC",
+  "type": "deployed-browser-e2e",
+  "overall": "NOT_PASSED",
+  "targets": [
+    "http://127.0.0.1:5181",
+    "http://192.168.28.113:5181"
+  ],
+  "browser": "Headless Chrome 151 via Chrome DevTools Protocol",
+  "viewports": [
+    {
+      "width": 1440,
+      "height": 1000
+    },
+    {
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "mocks": false,
+  "permissionCasesTested": false,
+  "sourceCodeChanged": false,
+  "fixture": {
+    "userId": "u-3a00e476-5bd",
+    "companyId": "co-f5327e77-3",
+    "userCreatedVia": "browser password registration",
+    "temporaryTier": "max",
+    "agentsPreparedVia": "authenticated existing API with computerId omitted",
+    "definitionsAndBindingsPreparedVia": "authenticated Task configuration APIs",
+    "channelsCreatedVia": "browser group creation",
+    "channels": {
+      "solo": "g-1de69d89",
+      "multi": "g-7fa478d6"
+    }
+  },
+  "checks": [
+    {
+      "id": "B01",
+      "name": "browser registration and authenticated SPA",
+      "result": "PASS"
+    },
+    {
+      "id": "B02",
+      "name": "browser creates channel with Aida and human only",
+      "result": "PASS"
+    },
+    {
+      "id": "B03",
+      "name": "browser creates channel with Aida, Worker, Verifier and human",
+      "result": "PASS"
+    },
+    {
+      "id": "B04",
+      "name": "configuration API preparation, binding readiness and activation",
+      "result": "PASS",
+      "scope": "API-assisted fixture; no corresponding UI form available"
+    },
+    {
+      "id": "B05",
+      "name": "solo browser message creates Task with Aida binding",
+      "result": "PASS",
+      "taskId": "af284ee4-1530-4150-9e25-03e0097e71af"
+    },
+    {
+      "id": "B06",
+      "name": "solo real model answer and delivery",
+      "result": "BLOCKED",
+      "reason": "real agent-turn provider returned HTTP 401"
+    },
+    {
+      "id": "B07",
+      "name": "multi-agent browser message creates Task with Aida binding",
+      "result": "PASS",
+      "taskId": "4d86e8e9-dae4-425f-8fee-c20d8df4bac9"
+    },
+    {
+      "id": "B08",
+      "name": "real Aida plan, WORK/VERIFY handoff and root delivery",
+      "result": "BLOCKED",
+      "reason": "real coordinator agent-turn provider returned HTTP 401",
+      "planCount": 0,
+      "deliveryCount": 0
+    },
+    {
+      "id": "B09",
+      "name": "localhost continue execution creates a new dispatch",
+      "result": "PASS",
+      "scope": "new real request fails again with provider HTTP 401"
+    },
+    {
+      "id": "B10",
+      "name": "browser explicitly creates second independent Task",
+      "result": "PASS",
+      "taskId": "beceb084-36bf-45b1-afc7-9d21147e8ef3"
+    },
+    {
+      "id": "B11",
+      "name": "ambiguous send and selected-task retry",
+      "result": "PASS",
+      "ambiguousStatus": 409,
+      "persistedSupplementCount": 1,
+      "selectedTaskInputRevision": 2
+    },
+    {
+      "id": "B12",
+      "name": "desktop cancel and mobile cancel",
+      "result": "PASS"
+    },
+    {
+      "id": "B13",
+      "name": "Agent bio save and reopen",
+      "result": "PASS",
+      "savedBio": "E2E 配置保存后应保持此说明。"
+    },
+    {
+      "id": "B14",
+      "name": "mobile Task selection and state",
+      "result": "PASS"
+    },
+    {
+      "id": "B15",
+      "name": "LAN HTTP continue execution",
+      "result": "FAIL",
+      "error": "crypto.randomUUID is not a function",
+      "isSecureContext": false
+    },
+    {
+      "id": "B16",
+      "name": "new Agent without computer selection",
+      "result": "FAIL",
+      "httpStatus": 400,
+      "error": "computerId must be a string"
+    },
+    {
+      "id": "B17",
+      "name": "workspace/channel Task configuration through UI",
+      "result": "FAIL",
+      "reason": "definition/binding/default-coordinator/mode configuration forms absent"
+    }
+  ],
+  "observations": {
+    "browserUncaughtExceptions": [],
+    "expectedApiRejectionStatuses": [
+      409
+    ],
+    "unexpectedApiRejectionStatuses": [
+      400
+    ],
+    "realAgentTurnError": "HTTP 401: provider credential rejected",
+    "httpLanCrypto": {
+      "randomUUID": "undefined",
+      "subtle": "undefined"
+    },
+    "artifactDownload": "NOT_EXECUTED: no real delivery artifact; Web Crypto dependency identified by source inspection",
+    "cancelledTaskBlockedReasonStillDisplayed": true
+  },
+  "cleanup": {
+    "all3TasksCancelled": true,
+    "workspaceMode": "LEGACY",
+    "pendingClaimedUnknownDispatchCount": 0,
+    "executorsStopped": true,
+    "testTierRestored": "free",
+    "testSessionsRevoked": true,
+    "browserClosed": true,
+    "retainedTestFacts": true
+  },
+  "screenshots": [
+    "browser-e2e-20261004/workspace-settings.png",
+    "browser-e2e-20261004/agent-create-error.png",
+    "browser-e2e-20261004/agent-settings.png",
+    "browser-e2e-20261004/aida-channel-legacy.png",
+    "browser-e2e-20261004/multi-channel-task.png",
+    "browser-e2e-20261004/multi-blocked.png",
+    "browser-e2e-20261004/selection-cancel.png",
+    "browser-e2e-20261004/mobile-local.png",
+    "browser-e2e-20261004/lan-crypto-error.png",
+    "browser-e2e-20261004/mobile-lan.png",
+    "browser-e2e-20261004/channel-details.png"
+  ]
+}

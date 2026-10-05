@@ -1,0 +1,1901 @@
+{
+  "createdAt": "2026-10-04T10:45:39.364378+00:00",
+  "result": "PASSED_AUTHORIZED_LOCAL_SCOPE",
+  "excluded": [
+    "cloud-service scenarios and their original server model 401",
+    "finding R4: Agent creation computerId:null mismatch",
+    "browser permission attack scenarios"
+  ],
+  "change": "introduce-channel-task-execution",
+  "target": "http://192.168.28.113:5181",
+  "execution": "actual local AgentRunner + native Codex 0.158.0 + bubblewrap + live HTTP/PostgreSQL/Redis + real Codex ChatGPT login model requests",
+  "inference": "remote Codex Responses inference; not offline local inference",
+  "browserApiOrModelMocks": false,
+  "browserAuxiliarySetup": [
+    "reused isolated test account/agents/definitions from initial acceptance",
+    "paired a new test computer through current authenticated browser API; pairing UI is not claimed as tested",
+    "created undriven Tasks by browser API only for drive/cancel interaction setup"
+  ],
+  "browserFindings": {
+    "R1": "local-only real model connection passed; cloud 401 excluded",
+    "R2": "definition version publish, binding persistence/default switch, readiness/activate, local admission import, workspace/channel/mobile forms passed",
+    "R3": "LAN HTTP continue + native result 5 and SHA256-checked desktop/mobile/message artifact downloads passed",
+    "R4": "excluded and unchanged",
+    "R5": "cancelled Task hides historical blocked reason; root-only selectors passed"
+  },
+  "browserRuntimeErrors": [],
+  "browserHttpErrors": [
+    {
+      "method": "POST",
+      "path": "/api/tasks",
+      "status": 400,
+      "reason": "test harness initially used conversationId/grants instead of documented channelId/grantIds; corrected setup succeeded; not a product failure"
+    }
+  ],
+  "browserHarnessLimitations": [
+    "CDP wait selectors were corrected for async rendering and the existing AgentEditor without role=dialog; no application Runtime exceptions occurred"
+  ],
+  "deployment": {
+    "imageId": "sha256:fe9566c2b6c870ef6643a063dc9163ddb7c2007ddc304ae1c14c1875878822d9",
+    "health": "healthy",
+    "schema": 19,
+    "noMigrationInRepair": true,
+    "businessWorkspacesUntouched": true,
+    "realWorkflowImageId": "sha256:0483ff52612dbf7eef038cdc6b99cbbbef08785239113068dd4521d50f6cd512",
+    "finalImageDelta": "existing definition role selector compatibility and codex-login qualification command hint; final deployed UI reread passed"
+  },
+  "checks": {
+    "automatedAssertionsPassed": 264,
+    "automatedAssertionsFailed": 0,
+    "skipped": 0,
+    "staticChecksPassed": 6,
+    "suites": [
+      {
+        "createdAt": "2026-10-04T08:32:04.004Z",
+        "suite": "checks",
+        "results": [
+          {
+            "label": "OpenSpec strict validation",
+            "logPath": "/tmp/cumora-task-verify-jdaUYe/0.log",
+            "code": 0,
+            "passed": true,
+            "logSha256": "2a65473356561014caaf691c08ac28f64cf5977fb471a0ae90d38250dd8efc32"
+          },
+          {
+            "label": "server types",
+            "logPath": "/tmp/cumora-task-verify-jdaUYe/1.log",
+            "code": 0,
+            "passed": true,
+            "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "label": "frontend types",
+            "logPath": "/tmp/cumora-task-verify-jdaUYe/2.log",
+            "code": 0,
+            "passed": true,
+            "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "label": "guard big-brain",
+            "logPath": "/tmp/cumora-task-verify-jdaUYe/3.log",
+            "code": 0,
+            "passed": true,
+            "logSha256": "e9867cf0f3032db09dfb49e07adb777639bad36f1955e130e6b6de19583adb56"
+          },
+          {
+            "label": "guard llm-tracked",
+            "logPath": "/tmp/cumora-task-verify-jdaUYe/4.log",
+            "code": 0,
+            "passed": true,
+            "logSha256": "f2d5ca16686e36d5176a218ffca8392582ca6f88dbf17ca1a8b9bed0b197bdf3"
+          },
+          {
+            "label": "guard engine-registry",
+            "logPath": "/tmp/cumora-task-verify-jdaUYe/5.log",
+            "code": 0,
+            "passed": true,
+            "logSha256": "0efd23db63883058a3c175b10ff997770878a911a2bac2fe478252c4d44c51bb"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "createdAt": "2026-10-04T08:18:52.646Z",
+        "suite": "unit",
+        "results": [
+          {
+            "label": "server/src/__tests__/schema-migrations.test.ts",
+            "logPath": "/tmp/cumora-task-verify-ltNTFP/0.log",
+            "code": 0,
+            "passed": true,
+            "tests": 19,
+            "pass": 19,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "73c9c06a2214aa19475290205c083c01b556f8afe9933d1ed73db40e4fcd07cc"
+          },
+          {
+            "label": "server/src/__tests__/schema-boot-retry.test.ts",
+            "logPath": "/tmp/cumora-task-verify-ltNTFP/1.log",
+            "code": 0,
+            "passed": true,
+            "tests": 8,
+            "pass": 8,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "57118260f479763054256c7feb60752f24d57d2e6d49cd8497de31f8bc75c99c"
+          },
+          {
+            "label": "server/src/__tests__/task-contracts.test.ts",
+            "logPath": "/tmp/cumora-task-verify-ltNTFP/2.log",
+            "code": 0,
+            "passed": true,
+            "tests": 7,
+            "pass": 7,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "4a4b7c7531fba10c9a1e867ad7207578243bd8e6081d43969e82a6b218928dcb"
+          },
+          {
+            "label": "server/src/__tests__/agents-runtime-jwt.test.ts",
+            "logPath": "/tmp/cumora-task-verify-ltNTFP/3.log",
+            "code": 0,
+            "passed": true,
+            "tests": 2,
+            "pass": 2,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "4747ac70cad6b2a4b599c15e66d0dbdde949416d564b37d62203c3a80be09cb5"
+          },
+          {
+            "label": "server/src/__tests__/agents-runtime-http-client.test.ts",
+            "logPath": "/tmp/cumora-task-verify-ltNTFP/4.log",
+            "code": 0,
+            "passed": true,
+            "tests": 12,
+            "pass": 12,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "64f430ddea5a0ed53dd94447fa8660832f671bbbce17ddc7def3a6f48299d3f1"
+          },
+          {
+            "label": "server/src/__tests__/agents-runtime-cli-argv.test.ts",
+            "logPath": "/tmp/cumora-task-verify-ltNTFP/5.log",
+            "code": 0,
+            "passed": true,
+            "tests": 12,
+            "pass": 12,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "3065c11ee1f6be87be462080caf48d92d5394a638249908abb14650a090f7af4"
+          },
+          {
+            "label": "server/src/__tests__/model-policy.test.ts",
+            "logPath": "/tmp/cumora-task-verify-ltNTFP/6.log",
+            "code": 0,
+            "passed": true,
+            "tests": 4,
+            "pass": 4,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "f2827ad553c44b4a4a059a960534c909683029a00d7b2a3c5b433c276f474256"
+          },
+          {
+            "label": "server/src/__tests__/agents-routing.test.ts",
+            "logPath": "/tmp/cumora-task-verify-ltNTFP/7.log",
+            "code": 0,
+            "passed": true,
+            "tests": 14,
+            "pass": 14,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "2424c80b7a4da57f07e86a345e8aa0cf966e624ba21a689bf4b750ec89f14e18"
+          },
+          {
+            "label": "server/src/__tests__/agents-routing-election.test.ts",
+            "logPath": "/tmp/cumora-task-verify-ltNTFP/8.log",
+            "code": 0,
+            "passed": true,
+            "tests": 14,
+            "pass": 14,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "a7bce63e3a642e097a51c39d040bf8242377303250235054177bd2fbc7922dce"
+          },
+          {
+            "label": "server/src/__tests__/agents-steer.test.ts",
+            "logPath": "/tmp/cumora-task-verify-ltNTFP/9.log",
+            "code": 0,
+            "passed": true,
+            "tests": 37,
+            "pass": 37,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "84bb17e2bb4a88285b565eda317bf999b0215025005c8b895cde993b826d870d"
+          },
+          {
+            "label": "server/src/__tests__/agents-steer-interrupt.test.ts",
+            "logPath": "/tmp/cumora-task-verify-ltNTFP/10.log",
+            "code": 0,
+            "passed": true,
+            "tests": 8,
+            "pass": 8,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "a1ed496675c51bc6dfae3db16d9dc57e406e932efac9ff77d3deb6ff4f3a2ba1"
+          },
+          {
+            "label": "server/src/__tests__/engine-argv-rejection.test.ts",
+            "logPath": "/tmp/cumora-task-verify-ltNTFP/11.log",
+            "code": 0,
+            "passed": true,
+            "tests": 6,
+            "pass": 6,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "8d30e73e3d1609ff344100c7fe507347b00a703de104c85b8ad41dc2c93b5ea2"
+          },
+          {
+            "label": "server/src/__tests__/engine-stdin-safety.test.ts",
+            "logPath": "/tmp/cumora-task-verify-ltNTFP/12.log",
+            "code": 0,
+            "passed": true,
+            "tests": 3,
+            "pass": 3,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "b91fb8b3183c014963b2d6b554fb2b0464845a30f029e82f38d1367ae2b40f91"
+          },
+          {
+            "label": "server/src/__tests__/agents-computer-blocked-engines.test.ts",
+            "logPath": "/tmp/cumora-task-verify-ltNTFP/13.log",
+            "code": 0,
+            "passed": true,
+            "tests": 11,
+            "pass": 11,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "8bfa0448112f545c04e47cea715d8552b8631dd9a882b97aac5ee1d6ed347d60"
+          },
+          {
+            "label": "server/src/__tests__/agents-computer-engine-model.test.ts",
+            "logPath": "/tmp/cumora-task-verify-ltNTFP/14.log",
+            "code": 0,
+            "passed": true,
+            "tests": 11,
+            "pass": 11,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "f149cf2d068a893177fe618b585b39655eca2e1e998de76cf2f9d485c666f34f"
+          },
+          {
+            "label": "server/src/__tests__/agents-computer-engine-hot-switch.test.ts",
+            "logPath": "/tmp/cumora-task-verify-ltNTFP/15.log",
+            "code": 0,
+            "passed": true,
+            "tests": 1,
+            "pass": 1,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "341fd9e6e62087dd0c21e01a030e44be560d8831288933721e7e36d5ba3e918c"
+          },
+          {
+            "label": "server/src/__tests__/computer-engine-defaults.test.ts",
+            "logPath": "/tmp/cumora-task-verify-ltNTFP/16.log",
+            "code": 0,
+            "passed": true,
+            "tests": 6,
+            "pass": 6,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "b4c508db157a9551f41d5ba2d006b3013a787b969582fe55fa0d63bfd9820a60"
+          },
+          {
+            "label": "server/src/__tests__/calendar-recurrence.test.ts",
+            "logPath": "/tmp/cumora-task-verify-ltNTFP/17.log",
+            "code": 0,
+            "passed": true,
+            "tests": 17,
+            "pass": 17,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "df22e69e3d74edb316f025903578d779499548cbde0c43a7942d5f79704a68c1"
+          },
+          {
+            "label": "server/src/__tests__/frontend-calendar-recurrence.test.ts",
+            "logPath": "/tmp/cumora-task-verify-ltNTFP/18.log",
+            "code": 0,
+            "passed": true,
+            "tests": 4,
+            "pass": 4,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "8d2565abc8c4e86d3d9d7b226e9a7e3f08b48ff0507eefb27f5b44ee509be4be"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "createdAt": "2026-10-04T08:15:06.561Z",
+        "suite": "integration",
+        "results": [
+          {
+            "label": "server/src/__integration__/channel-task-execution.test.ts",
+            "logPath": "/tmp/cumora-task-verify-OhU7x1/0.log",
+            "code": 0,
+            "passed": true,
+            "tests": 26,
+            "pass": 26,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "206f0418b39aa1b108cd67c0255f919198d146a23ef7b097d0d9326fce2c1463"
+          },
+          {
+            "label": "server/src/__integration__/task-entrypoints.test.ts",
+            "logPath": "/tmp/cumora-task-verify-OhU7x1/1.log",
+            "code": 0,
+            "passed": true,
+            "tests": 8,
+            "pass": 8,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "6a39717f650876e06cb8b9bb5072fb76aa05df51ed2d133e20bc3f5e25bf525e"
+          },
+          {
+            "label": "server/src/__integration__/organizational-governance.test.ts",
+            "logPath": "/tmp/cumora-task-verify-OhU7x1/2.log",
+            "code": 0,
+            "passed": true,
+            "tests": 1,
+            "pass": 1,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "6fbf54eceec39ef0b451e47fbf1b5a3fe9e21107da70ff6c1f0a350fe2f8296d"
+          },
+          {
+            "label": "server/src/__integration__/calendar-scheduler.test.ts",
+            "logPath": "/tmp/cumora-task-verify-OhU7x1/3.log",
+            "code": 0,
+            "passed": true,
+            "tests": 4,
+            "pass": 4,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "616ce72d896dee63531ca83cd38202727826e814de4b23d32fc019c66f64a2f9"
+          },
+          {
+            "label": "server/src/__integration__/runtime-aux-authorization.test.ts",
+            "logPath": "/tmp/cumora-task-verify-OhU7x1/4.log",
+            "code": 0,
+            "passed": true,
+            "tests": 10,
+            "pass": 10,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "54738ba770b898ae20367d76cbc890e6675868aadb3968475a0e8b89c09d1597"
+          },
+          {
+            "label": "server/src/__integration__/convene-concurrency.test.ts",
+            "logPath": "/tmp/cumora-task-verify-OhU7x1/5.log",
+            "code": 0,
+            "passed": true,
+            "tests": 3,
+            "pass": 3,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "93885959f022e619eb3d475a97200108c5e287f2fd11c8e1dc8b60c8e48db54d"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "createdAt": "2026-10-04T08:13:21.877Z",
+        "suite": "native",
+        "results": [
+          {
+            "label": "server/src/__runtime__/task-local-boundary.test.ts",
+            "logPath": "/tmp/cumora-task-verify-mbijNB/0.log",
+            "code": 0,
+            "passed": true,
+            "tests": 3,
+            "pass": 3,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "cd103eb085528aa0a62d353ffa76adc4bd601c47f173d5a056420e492e41708e"
+          },
+          {
+            "label": "server/src/__runtime__/task-local-workflow.test.ts",
+            "logPath": "/tmp/cumora-task-verify-mbijNB/1.log",
+            "code": 0,
+            "passed": true,
+            "tests": 2,
+            "pass": 2,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "be8e21219e3e6b6af0dc1fbe36a4bf4123b0cc99023da37b2546d77d58f1e927"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "createdAt": "2026-10-04T08:29:03.452Z",
+        "suite": "ui",
+        "results": [
+          {
+            "label": "desktop/mobile Chrome interactions",
+            "logPath": "/tmp/cumora-task-verify-pjv0Ip/0.log",
+            "code": 0,
+            "passed": true,
+            "tests": 7,
+            "pass": 7,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logSha256": "7ca6c1cbda1c37b5a51d12e6432342982b5acdedee49ca8183124173c6ac722e"
+          }
+        ],
+        "passed": true
+      },
+      {
+        "suite": "local-model",
+        "passed": true,
+        "results": [
+          {
+            "label": "server/src/__tests__/task-local-model.test.ts",
+            "passed": true,
+            "tests": 4,
+            "pass": 4,
+            "fail": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "logPath": "/tmp/cumora-repair-local-model.log",
+            "logSha256": "2e2a23caa18212bfc96ea03e5075afe3a7bbf4b742af67f05e35f83706131a0d"
+          }
+        ]
+      }
+    ]
+  },
+  "localQualification": {
+    "engine": "codex",
+    "binaryHash": "167c0148a849d2444f1b5a7fb5f8bb2de1de5ae13a2a504b833fc765980f5cd9",
+    "modelProvider": "codex-login",
+    "verificationRef": "Native boundary tests 2026-10-04T08:13:54.825Z; /tmp/cumora-local-task-admission.json.log; sha256:0c504e3d6c04f7c2ea449102af111e5547ae50a8f9240cb5ef9d0fb5ca0d4fde",
+    "checks": {
+      "filesystem": true,
+      "environment": true,
+      "process": true,
+      "network": true,
+      "freshSession": true,
+      "stoppedChildren": true
+    },
+    "tests": 3
+  },
+  "facts": {
+    "tasks": [
+      {
+        "id": "573e7c53-37bc-44ba-bbc3-c4051dc1b44e",
+        "conversation_id": "g-1de69d89",
+        "parent_task_id": null,
+        "root_task_id": "573e7c53-37bc-44ba-bbc3-c4051dc1b44e",
+        "objective": "本地 Aida 复验：计算 17 + 25，只回复数字。",
+        "status": "DELIVERED",
+        "blocked_code": null,
+        "accountable_binding_id": "1fa6790e-4f85-4acf-b572-1d23362765db",
+        "configuration": {
+          "role": "COORDINATOR",
+          "instructions": "你是 Aida，负责当前频道任务。只有一个 Agent 时直接完成并以中文答复。用户明确要求 Worker 和 Verifier 协作时，使用当前频道 eligibleBindings 写入 task-plan.json，创建 WORK 和独立 VERIFY 两个节点，VERIFY 依赖 WORK；计划提交后等待子任务。canPlan=false 时仅完成当前工作或汇总已交接产物，禁止再次委派。"
+        },
+        "created_at": "2026-10-04T08:22:45.669563+00:00",
+        "updated_at": "2026-10-04T08:23:06.374794+00:00"
+      },
+      {
+        "id": "c1033df0-f9ea-414a-820e-024a0793fab7",
+        "conversation_id": "g-7fa478d6",
+        "parent_task_id": null,
+        "root_task_id": "c1033df0-f9ea-414a-820e-024a0793fab7",
+        "objective": "本地多 Agent 复验：请 Aida 提出两节点计划，委派 Worker 在任务工作目录生成 hello.txt，内容必须恰好为 hello world；独立 Verifier 依赖 Worker，读取交接的准确产物版本，验证内容并生成报告；最后由 Aida 汇总产物与验证结论。WORK 和 VERIFY 必须分别由 Worker 与 Verifier 完成。",
+        "status": "DELIVERED",
+        "blocked_code": null,
+        "accountable_binding_id": "ad8e26f6-5eb8-4ee8-9d45-eb608fb3552a",
+        "configuration": {
+          "role": "COORDINATOR",
+          "instructions": "你是 Aida，负责当前频道任务。只有一个 Agent 时直接完成并以中文答复。用户明确要求 Worker 和 Verifier 协作时，使用当前频道 eligibleBindings 写入 task-plan.json，创建 WORK 和独立 VERIFY 两个节点，VERIFY 依赖 WORK；计划提交后等待子任务。canPlan=false 时仅完成当前工作或汇总已交接产物，禁止再次委派。"
+        },
+        "created_at": "2026-10-04T08:23:40.352418+00:00",
+        "updated_at": "2026-10-04T08:27:11.514256+00:00"
+      },
+      {
+        "id": "8ac77d5e-377e-47e0-93b1-f309f288d4a7",
+        "conversation_id": "g-7fa478d6",
+        "parent_task_id": "c1033df0-f9ea-414a-820e-024a0793fab7",
+        "root_task_id": "c1033df0-f9ea-414a-820e-024a0793fab7",
+        "objective": "依赖 Worker 完成后，读取交接的准确 hello.txt 产物版本，验证其内容是否恰好为 hello world，并在 /workspace 生成验证报告。",
+        "status": "DELIVERED",
+        "blocked_code": null,
+        "accountable_binding_id": "3abb901b-725b-4c25-ad2a-1cd97b72c5b5",
+        "configuration": {
+          "role": "VERIFY",
+          "instructions": "你是Verifier，仅执行当前获准任务并返回产物。"
+        },
+        "created_at": "2026-10-04T08:24:18.150315+00:00",
+        "updated_at": "2026-10-04T08:26:16.443789+00:00"
+      },
+      {
+        "id": "37fe5734-a211-43ad-8847-33de3089450c",
+        "conversation_id": "g-7fa478d6",
+        "parent_task_id": "c1033df0-f9ea-414a-820e-024a0793fab7",
+        "root_task_id": "c1033df0-f9ea-414a-820e-024a0793fab7",
+        "objective": "在任务工作目录 /workspace 生成 hello.txt，内容必须恰好为 hello world。",
+        "status": "DELIVERED",
+        "blocked_code": null,
+        "accountable_binding_id": "26665400-d51c-45e7-a2d4-14279297ce44",
+        "configuration": {
+          "role": "WORK",
+          "instructions": "你是Worker，仅执行当前获准任务并返回产物。"
+        },
+        "created_at": "2026-10-04T08:24:18.150315+00:00",
+        "updated_at": "2026-10-04T08:25:06.703787+00:00"
+      },
+      {
+        "id": "139794b3-3416-43ea-9e88-74c6fc32dcd6",
+        "conversation_id": "g-1de69d89",
+        "parent_task_id": null,
+        "root_task_id": "139794b3-3416-43ea-9e88-74c6fc32dcd6",
+        "objective": "LAN 继续执行复验：计算 2 + 3，只回复数字。",
+        "status": "DELIVERED",
+        "blocked_code": null,
+        "accountable_binding_id": "1fa6790e-4f85-4acf-b572-1d23362765db",
+        "configuration": {
+          "role": "COORDINATOR",
+          "instructions": "你是 Aida，负责当前频道任务。只有一个 Agent 时直接完成并以中文答复。用户明确要求 Worker 和 Verifier 协作时，使用当前频道 eligibleBindings 写入 task-plan.json，创建 WORK 和独立 VERIFY 两个节点，VERIFY 依赖 WORK；计划提交后等待子任务。canPlan=false 时仅完成当前工作或汇总已交接产物，禁止再次委派。"
+        },
+        "created_at": "2026-10-04T08:25:20.676122+00:00",
+        "updated_at": "2026-10-04T08:25:47.318537+00:00"
+      },
+      {
+        "id": "eea26563-599a-4e1f-a472-94be2cbd8a58",
+        "conversation_id": "g-1de69d89",
+        "parent_task_id": null,
+        "root_task_id": "eea26563-599a-4e1f-a472-94be2cbd8a58",
+        "objective": "手机取消复验：不执行模型",
+        "status": "CANCELLED",
+        "blocked_code": null,
+        "accountable_binding_id": "1fa6790e-4f85-4acf-b572-1d23362765db",
+        "configuration": {
+          "role": "COORDINATOR",
+          "instructions": "你是 Aida，负责当前频道任务。只有一个 Agent 时直接完成并以中文答复。用户明确要求 Worker 和 Verifier 协作时，使用当前频道 eligibleBindings 写入 task-plan.json，创建 WORK 和独立 VERIFY 两个节点，VERIFY 依赖 WORK；计划提交后等待子任务。canPlan=false 时仅完成当前工作或汇总已交接产物，禁止再次委派。"
+        },
+        "created_at": "2026-10-04T08:29:14.126944+00:00",
+        "updated_at": "2026-10-04T08:29:14.126944+00:00"
+      }
+    ],
+    "dispatches": [
+      {
+        "task_id": "573e7c53-37bc-44ba-bbc3-c4051dc1b44e",
+        "agent_id": "aida",
+        "state": "COMPLETED",
+        "claim_generation": 1,
+        "stopped_at": "2026-10-04T08:23:06.45139+00:00",
+        "created_at": "2026-10-04T08:22:45.784054+00:00"
+      },
+      {
+        "task_id": "c1033df0-f9ea-414a-820e-024a0793fab7",
+        "agent_id": "aida",
+        "state": "BLOCKED",
+        "claim_generation": 1,
+        "stopped_at": "2026-10-04T08:24:18.244572+00:00",
+        "created_at": "2026-10-04T08:23:40.623047+00:00"
+      },
+      {
+        "task_id": "37fe5734-a211-43ad-8847-33de3089450c",
+        "agent_id": "worker",
+        "state": "COMPLETED",
+        "claim_generation": 1,
+        "stopped_at": "2026-10-04T08:25:06.746943+00:00",
+        "created_at": "2026-10-04T08:24:18.300509+00:00"
+      },
+      {
+        "task_id": "8ac77d5e-377e-47e0-93b1-f309f288d4a7",
+        "agent_id": "verifier",
+        "state": "COMPLETED",
+        "claim_generation": 1,
+        "stopped_at": "2026-10-04T08:26:16.493919+00:00",
+        "created_at": "2026-10-04T08:25:08.343725+00:00"
+      },
+      {
+        "task_id": "139794b3-3416-43ea-9e88-74c6fc32dcd6",
+        "agent_id": "aida",
+        "state": "COMPLETED",
+        "claim_generation": 1,
+        "stopped_at": "2026-10-04T08:25:47.362441+00:00",
+        "created_at": "2026-10-04T08:25:20.944225+00:00"
+      },
+      {
+        "task_id": "c1033df0-f9ea-414a-820e-024a0793fab7",
+        "agent_id": "aida",
+        "state": "COMPLETED",
+        "claim_generation": 1,
+        "stopped_at": "2026-10-04T08:27:11.615556+00:00",
+        "created_at": "2026-10-04T08:26:18.4301+00:00"
+      }
+    ],
+    "plans": [
+      {
+        "id": "0fb1b3f3-d833-4b0e-b415-a213ac7053f7",
+        "task_id": "c1033df0-f9ea-414a-820e-024a0793fab7",
+        "revision": 1,
+        "plan": {
+          "members": [
+            {
+              "key": "work-create-hello",
+              "role": "WORK",
+              "taskId": "37fe5734-a211-43ad-8847-33de3089450c",
+              "grantIds": [],
+              "bindingId": "26665400-d51c-45e7-a2d4-14279297ce44",
+              "dependsOn": [],
+              "objective": "在任务工作目录 /workspace 生成 hello.txt，内容必须恰好为 hello world。"
+            },
+            {
+              "key": "verify-hello",
+              "role": "VERIFY",
+              "taskId": "8ac77d5e-377e-47e0-93b1-f309f288d4a7",
+              "grantIds": [],
+              "bindingId": "3abb901b-725b-4c25-ad2a-1cd97b72c5b5",
+              "dependsOn": [
+                "work-create-hello"
+              ],
+              "objective": "依赖 Worker 完成后，读取交接的准确 hello.txt 产物版本，验证其内容是否恰好为 hello world，并在 /workspace 生成验证报告。"
+            }
+          ],
+          "parallelism": 1,
+          "scopeRevision": 1
+        },
+        "created_by": "u-3a00e476-5bd"
+      }
+    ],
+    "artifacts": [
+      {
+        "id": "4acc7be0-bf83-4874-a8c1-d4ea0b8d022a",
+        "task_id": "573e7c53-37bc-44ba-bbc3-c4051dc1b44e",
+        "content_hash": "73475cb40a568e8da8a045ced110137e159f890ac4da883b6b17dc651b3a8049",
+        "content": "42",
+        "producer_binding_id": "1fa6790e-4f85-4acf-b572-1d23362765db",
+        "media_type": "text/markdown",
+        "provenance": {
+          "sources": [
+            {
+              "id": "m-67d936f2-9fb1-4c59-ac50-299237934f90",
+              "kind": "MESSAGE",
+              "version": 1
+            }
+          ],
+          "audience": {
+            "id": "g-1de69d89",
+            "kind": "CHANNEL"
+          },
+          "companyId": "co-f5327e77-3",
+          "destinations": [
+            "task-model",
+            "artifact",
+            "channel"
+          ],
+          "conversationId": "g-1de69d89"
+        }
+      },
+      {
+        "id": "1b4d74f7-8595-4270-a0e2-65a164dbab23",
+        "task_id": "37fe5734-a211-43ad-8847-33de3089450c",
+        "content_hash": "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+        "content": "hello world",
+        "producer_binding_id": "26665400-d51c-45e7-a2d4-14279297ce44",
+        "media_type": "text/plain",
+        "provenance": {
+          "sources": [
+            {
+              "id": "m-f1f850fd-c1c1-49be-9d23-1e5990ef47f0",
+              "kind": "MESSAGE",
+              "version": 1
+            },
+            {
+              "id": "37fe5734-a211-43ad-8847-33de3089450c",
+              "kind": "TASK_SCOPE",
+              "version": 1
+            }
+          ],
+          "audience": {
+            "id": "g-7fa478d6",
+            "kind": "CHANNEL"
+          },
+          "companyId": "co-f5327e77-3",
+          "destinations": [
+            "task-model",
+            "artifact",
+            "channel"
+          ],
+          "conversationId": "g-7fa478d6"
+        }
+      },
+      {
+        "id": "ee1edc51-473c-40d3-9f16-214a948f9e76",
+        "task_id": "37fe5734-a211-43ad-8847-33de3089450c",
+        "content_hash": "ad3918580710b4a6cbbf9b31f02915b5a904acce6660fbbf3be0e40e3e34e6f0",
+        "content": "已完成：[/workspace/hello.txt](/workspace/hello.txt) 的内容严格为 `hello world`，已校验为 11 字节且无末尾换行。",
+        "producer_binding_id": "26665400-d51c-45e7-a2d4-14279297ce44",
+        "media_type": "text/markdown",
+        "provenance": {
+          "sources": [
+            {
+              "id": "m-f1f850fd-c1c1-49be-9d23-1e5990ef47f0",
+              "kind": "MESSAGE",
+              "version": 1
+            },
+            {
+              "id": "37fe5734-a211-43ad-8847-33de3089450c",
+              "kind": "TASK_SCOPE",
+              "version": 1
+            }
+          ],
+          "audience": {
+            "id": "g-7fa478d6",
+            "kind": "CHANNEL"
+          },
+          "companyId": "co-f5327e77-3",
+          "destinations": [
+            "task-model",
+            "artifact",
+            "channel"
+          ],
+          "conversationId": "g-7fa478d6"
+        }
+      },
+      {
+        "id": "75664342-f5f6-43a5-8363-5a72c072c2d7",
+        "task_id": "139794b3-3416-43ea-9e88-74c6fc32dcd6",
+        "content_hash": "ef2d127de37b942baad06145e54b0c619a1f22327b2ebbcfbec78f5564afe39d",
+        "content": "5",
+        "producer_binding_id": "1fa6790e-4f85-4acf-b572-1d23362765db",
+        "media_type": "text/markdown",
+        "provenance": {
+          "sources": [
+            {
+              "id": "139794b3-3416-43ea-9e88-74c6fc32dcd6",
+              "kind": "TASK_SCOPE",
+              "version": 1
+            }
+          ],
+          "audience": {
+            "id": "g-1de69d89",
+            "kind": "CHANNEL"
+          },
+          "companyId": "co-f5327e77-3",
+          "destinations": [
+            "task-model",
+            "artifact",
+            "channel"
+          ],
+          "conversationId": "g-1de69d89"
+        }
+      },
+      {
+        "id": "cb2aa921-5ee1-40e5-bcd9-1698ecee1ac9",
+        "task_id": "8ac77d5e-377e-47e0-93b1-f309f288d4a7",
+        "content_hash": "4c480aa7ff0261461ff330fc142ff5002f5bbef0366f7c33562c08d8b3d79976",
+        "content": "# Verification Report\n\nTask ID: 8ac77d5e-377e-47e0-93b1-f309f288d4a7\n\nRole: Verifier\n\n## Source Reviewed\n\n- Worker handoff statement: input `04cdd7e6-b03b-431f-98a7-e571d5b0f150`\n- Handoff artifact content version: input `38c54590-d9e0-4919-9e90-1a77e966cf21`\n- Expected exact content: `hello world`\n\n## Checks\n\n- `/workspace/hello.txt` filesystem check: file was not present in this verifier workspace at verification time.\n- Handoff artifact content checked byte-for-byte against the expected string.\n- Handoff artifact content length: 11 bytes.\n- Handoff artifact content trailing newline: absent.\n\n## Result\n\nPASS\n\nThe handed-off exact `hello.txt` artifact version is exactly `hello world`.\n",
+        "producer_binding_id": "3abb901b-725b-4c25-ad2a-1cd97b72c5b5",
+        "media_type": "text/markdown",
+        "provenance": {
+          "sources": [
+            {
+              "id": "m-f1f850fd-c1c1-49be-9d23-1e5990ef47f0",
+              "kind": "MESSAGE",
+              "version": 1
+            },
+            {
+              "id": "8ac77d5e-377e-47e0-93b1-f309f288d4a7",
+              "kind": "TASK_SCOPE",
+              "version": 1
+            },
+            {
+              "id": "ee1edc51-473c-40d3-9f16-214a948f9e76",
+              "kind": "ARTIFACT",
+              "version": 1
+            },
+            {
+              "id": "1b4d74f7-8595-4270-a0e2-65a164dbab23",
+              "kind": "ARTIFACT",
+              "version": 1
+            }
+          ],
+          "audience": {
+            "id": "g-7fa478d6",
+            "kind": "CHANNEL"
+          },
+          "companyId": "co-f5327e77-3",
+          "destinations": [
+            "task-model",
+            "artifact",
+            "channel"
+          ],
+          "conversationId": "g-7fa478d6"
+        }
+      },
+      {
+        "id": "0e2ec0c8-e287-4cd9-b9d6-48f2dd5a9c92",
+        "task_id": "8ac77d5e-377e-47e0-93b1-f309f288d4a7",
+        "content_hash": "3f3ab353907088a24a62947656de922d1d09c9e157c9194cbeafcb68ffb0c95a",
+        "content": "已完成 Verifier 任务，并在 `/workspace` 生成验证报告：[verification-report.md](/workspace/verification-report.md)。\n\n结论：`PASS`。交接的准确 `hello.txt` 产物版本内容恰好为 `hello world`，长度 11 字节且无末尾换行。报告中也记录了当前 verifier 工作区内 `/workspace/hello.txt` 文件本身不存在这一事实。",
+        "producer_binding_id": "3abb901b-725b-4c25-ad2a-1cd97b72c5b5",
+        "media_type": "text/markdown",
+        "provenance": {
+          "sources": [
+            {
+              "id": "m-f1f850fd-c1c1-49be-9d23-1e5990ef47f0",
+              "kind": "MESSAGE",
+              "version": 1
+            },
+            {
+              "id": "8ac77d5e-377e-47e0-93b1-f309f288d4a7",
+              "kind": "TASK_SCOPE",
+              "version": 1
+            },
+            {
+              "id": "ee1edc51-473c-40d3-9f16-214a948f9e76",
+              "kind": "ARTIFACT",
+              "version": 1
+            },
+            {
+              "id": "1b4d74f7-8595-4270-a0e2-65a164dbab23",
+              "kind": "ARTIFACT",
+              "version": 1
+            }
+          ],
+          "audience": {
+            "id": "g-7fa478d6",
+            "kind": "CHANNEL"
+          },
+          "companyId": "co-f5327e77-3",
+          "destinations": [
+            "task-model",
+            "artifact",
+            "channel"
+          ],
+          "conversationId": "g-7fa478d6"
+        }
+      },
+      {
+        "id": "750ce941-a834-4b36-99f4-c29e1eb020a1",
+        "task_id": "c1033df0-f9ea-414a-820e-024a0793fab7",
+        "content_hash": "2bfd4d3bd5e084d6750b3a7b32a7e0c5bbebae75f72f8afcbf7f9a114f0df5a0",
+        "content": "# Aida Final Summary\n\nTask ID: c1033df0-f9ea-414a-820e-024a0793fab7\n\nRole: Aida\n\n## Worker Artifact\n\n- Artifact: `hello.txt`\n- Handoff content: `hello world`\n- Expected exact content: `hello world`\n- Worker reported byte length: 11 bytes\n- Worker reported trailing newline: absent\n\n## Verifier Conclusion\n\n- Verification report artifact: `verification-report.md`\n- Result: PASS\n- Verified content: the handed-off exact `hello.txt` artifact version is exactly `hello world`\n- Verified byte length: 11 bytes\n- Verified trailing newline: absent\n- Note: the verifier reported that `/workspace/hello.txt` was not present in its own verifier workspace at verification time, so verification was performed against the handed-off artifact content version.\n\n## Final Conclusion\n\nPASS\n\nBased on the approved Worker handoff and independent Verifier report, the required artifact content was produced and verified: `hello.txt` content is exactly `hello world`, with 11 bytes and no trailing newline.\n",
+        "producer_binding_id": "ad8e26f6-5eb8-4ee8-9d45-eb608fb3552a",
+        "media_type": "text/markdown",
+        "provenance": {
+          "sources": [
+            {
+              "id": "m-f1f850fd-c1c1-49be-9d23-1e5990ef47f0",
+              "kind": "MESSAGE",
+              "version": 1
+            },
+            {
+              "id": "0e2ec0c8-e287-4cd9-b9d6-48f2dd5a9c92",
+              "kind": "ARTIFACT",
+              "version": 1
+            },
+            {
+              "id": "cb2aa921-5ee1-40e5-bcd9-1698ecee1ac9",
+              "kind": "ARTIFACT",
+              "version": 1
+            },
+            {
+              "id": "ee1edc51-473c-40d3-9f16-214a948f9e76",
+              "kind": "ARTIFACT",
+              "version": 1
+            },
+            {
+              "id": "1b4d74f7-8595-4270-a0e2-65a164dbab23",
+              "kind": "ARTIFACT",
+              "version": 1
+            }
+          ],
+          "audience": {
+            "id": "g-7fa478d6",
+            "kind": "CHANNEL"
+          },
+          "companyId": "co-f5327e77-3",
+          "destinations": [
+            "task-model",
+            "artifact",
+            "channel"
+          ],
+          "conversationId": "g-7fa478d6"
+        }
+      },
+      {
+        "id": "a6ffb2a3-282f-43e3-9711-2131d7aff6fe",
+        "task_id": "c1033df0-f9ea-414a-820e-024a0793fab7",
+        "content_hash": "8ec4038c6f2af7594a9f3f64ed3fc84f8e12f8c8a276d013b19dc53212040217",
+        "content": "已完成 Aida 汇总，未写入 `task-plan.json`（因为 `canPlan=false`）。\n\n交付物已生成：[aida-summary.md](/workspace/aida-summary.md)\n\n结论：`PASS`。根据已交接的 Worker 产物与独立 Verifier 报告，`hello.txt` 的准确产物版本内容恰好为 `hello world`，长度 11 字节且无末尾换行。",
+        "producer_binding_id": "ad8e26f6-5eb8-4ee8-9d45-eb608fb3552a",
+        "media_type": "text/markdown",
+        "provenance": {
+          "sources": [
+            {
+              "id": "m-f1f850fd-c1c1-49be-9d23-1e5990ef47f0",
+              "kind": "MESSAGE",
+              "version": 1
+            },
+            {
+              "id": "0e2ec0c8-e287-4cd9-b9d6-48f2dd5a9c92",
+              "kind": "ARTIFACT",
+              "version": 1
+            },
+            {
+              "id": "cb2aa921-5ee1-40e5-bcd9-1698ecee1ac9",
+              "kind": "ARTIFACT",
+              "version": 1
+            },
+            {
+              "id": "ee1edc51-473c-40d3-9f16-214a948f9e76",
+              "kind": "ARTIFACT",
+              "version": 1
+            },
+            {
+              "id": "1b4d74f7-8595-4270-a0e2-65a164dbab23",
+              "kind": "ARTIFACT",
+              "version": 1
+            }
+          ],
+          "audience": {
+            "id": "g-7fa478d6",
+            "kind": "CHANNEL"
+          },
+          "companyId": "co-f5327e77-3",
+          "destinations": [
+            "task-model",
+            "artifact",
+            "channel"
+          ],
+          "conversationId": "g-7fa478d6"
+        }
+      }
+    ],
+    "deliveries": [
+      {
+        "task_id": "573e7c53-37bc-44ba-bbc3-c4051dc1b44e",
+        "artifact_ids": [
+          "4acc7be0-bf83-4874-a8c1-d4ea0b8d022a"
+        ],
+        "evidence_ids": [],
+        "summary": "42",
+        "message_id": "dd059f19-d20c-4a40-be8e-9347e209a124",
+        "limitations": []
+      },
+      {
+        "task_id": "37fe5734-a211-43ad-8847-33de3089450c",
+        "artifact_ids": [
+          "1b4d74f7-8595-4270-a0e2-65a164dbab23",
+          "ee1edc51-473c-40d3-9f16-214a948f9e76"
+        ],
+        "evidence_ids": [],
+        "summary": "已完成：[/workspace/hello.txt](/workspace/hello.txt) 的内容严格为 `hello world`，已校验为 11 字节且无末尾换行。",
+        "message_id": null,
+        "limitations": []
+      },
+      {
+        "task_id": "139794b3-3416-43ea-9e88-74c6fc32dcd6",
+        "artifact_ids": [
+          "75664342-f5f6-43a5-8363-5a72c072c2d7"
+        ],
+        "evidence_ids": [],
+        "summary": "5",
+        "message_id": "d577918e-a2ad-4322-bcff-2e6e54e9adc9",
+        "limitations": []
+      },
+      {
+        "task_id": "8ac77d5e-377e-47e0-93b1-f309f288d4a7",
+        "artifact_ids": [
+          "cb2aa921-5ee1-40e5-bcd9-1698ecee1ac9",
+          "0e2ec0c8-e287-4cd9-b9d6-48f2dd5a9c92"
+        ],
+        "evidence_ids": [],
+        "summary": "已完成 Verifier 任务，并在 `/workspace` 生成验证报告：[verification-report.md](/workspace/verification-report.md)。\n\n结论：`PASS`。交接的准确 `hello.txt` 产物版本内容恰好为 `hello world`，长度 11 字节且无末尾换行。报告中也记录了当前 verifier 工作区内 `/workspace/hello.txt` 文件本身不存在这一事实。",
+        "message_id": null,
+        "limitations": []
+      },
+      {
+        "task_id": "c1033df0-f9ea-414a-820e-024a0793fab7",
+        "artifact_ids": [
+          "750ce941-a834-4b36-99f4-c29e1eb020a1",
+          "a6ffb2a3-282f-43e3-9711-2131d7aff6fe"
+        ],
+        "evidence_ids": [
+          "cb2aa921-5ee1-40e5-bcd9-1698ecee1ac9",
+          "0e2ec0c8-e287-4cd9-b9d6-48f2dd5a9c92"
+        ],
+        "summary": "已完成 Aida 汇总，未写入 `task-plan.json`（因为 `canPlan=false`）。\n\n交付物已生成：[aida-summary.md](/workspace/aida-summary.md)\n\n结论：`PASS`。根据已交接的 Worker 产物与独立 Verifier 报告，`hello.txt` 的准确产物版本内容恰好为 `hello world`，长度 11 字节且无末尾换行。",
+        "message_id": "3bd8f7f5-4d8f-43e7-b722-0e1523cae155",
+        "limitations": []
+      }
+    ],
+    "handoffs": [
+      {
+        "version_id": "1b4d74f7-8595-4270-a0e2-65a164dbab23",
+        "consumer_task_id": "8ac77d5e-377e-47e0-93b1-f309f288d4a7",
+        "consumer_binding_id": "3abb901b-725b-4c25-ad2a-1cd97b72c5b5",
+        "content_hash": "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
+      },
+      {
+        "version_id": "ee1edc51-473c-40d3-9f16-214a948f9e76",
+        "consumer_task_id": "8ac77d5e-377e-47e0-93b1-f309f288d4a7",
+        "consumer_binding_id": "3abb901b-725b-4c25-ad2a-1cd97b72c5b5",
+        "content_hash": "ad3918580710b4a6cbbf9b31f02915b5a904acce6660fbbf3be0e40e3e34e6f0"
+      },
+      {
+        "version_id": "0e2ec0c8-e287-4cd9-b9d6-48f2dd5a9c92",
+        "consumer_task_id": "c1033df0-f9ea-414a-820e-024a0793fab7",
+        "consumer_binding_id": "ad8e26f6-5eb8-4ee8-9d45-eb608fb3552a",
+        "content_hash": "3f3ab353907088a24a62947656de922d1d09c9e157c9194cbeafcb68ffb0c95a"
+      },
+      {
+        "version_id": "cb2aa921-5ee1-40e5-bcd9-1698ecee1ac9",
+        "consumer_task_id": "c1033df0-f9ea-414a-820e-024a0793fab7",
+        "consumer_binding_id": "ad8e26f6-5eb8-4ee8-9d45-eb608fb3552a",
+        "content_hash": "4c480aa7ff0261461ff330fc142ff5002f5bbef0366f7c33562c08d8b3d79976"
+      },
+      {
+        "version_id": "1b4d74f7-8595-4270-a0e2-65a164dbab23",
+        "consumer_task_id": "c1033df0-f9ea-414a-820e-024a0793fab7",
+        "consumer_binding_id": "ad8e26f6-5eb8-4ee8-9d45-eb608fb3552a",
+        "content_hash": "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9"
+      },
+      {
+        "version_id": "ee1edc51-473c-40d3-9f16-214a948f9e76",
+        "consumer_task_id": "c1033df0-f9ea-414a-820e-024a0793fab7",
+        "consumer_binding_id": "ad8e26f6-5eb8-4ee8-9d45-eb608fb3552a",
+        "content_hash": "ad3918580710b4a6cbbf9b31f02915b5a904acce6660fbbf3be0e40e3e34e6f0"
+      }
+    ],
+    "modelCalls": [
+      {
+        "agent_id": "aida",
+        "model": "gpt-5.5",
+        "status": "ok",
+        "input_tokens": 7689,
+        "cached_input_tokens": 0,
+        "output_tokens": 5,
+        "measured": true,
+        "latency_ms": 1953,
+        "extras": {
+          "taskId": "573e7c53-37bc-44ba-bbc3-c4051dc1b44e",
+          "executor": "local-codex-login",
+          "permitId": "8025cc44-aff2-4c13-9f5b-06f754054e9e",
+          "taskContextId": "25229ae5-086f-47f8-b546-4815de75fe6e"
+        }
+      },
+      {
+        "agent_id": "aida",
+        "model": "gpt-5.5",
+        "status": "ok",
+        "input_tokens": 7962,
+        "cached_input_tokens": 0,
+        "output_tokens": 370,
+        "measured": true,
+        "latency_ms": 10955,
+        "extras": {
+          "taskId": "c1033df0-f9ea-414a-820e-024a0793fab7",
+          "executor": "local-codex-login",
+          "permitId": "9f6cfb21-82eb-4270-b26d-2fa98cd1166c",
+          "taskContextId": "64e1b0f8-8c0a-4ea7-8d07-9f34564049ce"
+        }
+      },
+      {
+        "agent_id": "aida",
+        "model": "gpt-5.5",
+        "status": "ok",
+        "input_tokens": 8372,
+        "cached_input_tokens": 0,
+        "output_tokens": 71,
+        "measured": true,
+        "latency_ms": 2917,
+        "extras": {
+          "taskId": "c1033df0-f9ea-414a-820e-024a0793fab7",
+          "executor": "local-codex-login",
+          "permitId": "4e35fd7e-9acd-4dd4-af06-922b97f98745",
+          "taskContextId": "64e1b0f8-8c0a-4ea7-8d07-9f34564049ce"
+        }
+      },
+      {
+        "agent_id": "worker",
+        "model": "gpt-5.5",
+        "status": "ok",
+        "input_tokens": 7735,
+        "cached_input_tokens": 0,
+        "output_tokens": 91,
+        "measured": true,
+        "latency_ms": 4316,
+        "extras": {
+          "taskId": "37fe5734-a211-43ad-8847-33de3089450c",
+          "executor": "local-codex-login",
+          "permitId": "cb40f0fe-6abd-47f3-a161-f8696801a7fd",
+          "taskContextId": "ed6f3b66-1d49-4a50-a69b-061daf973140"
+        }
+      },
+      {
+        "agent_id": "worker",
+        "model": "gpt-5.5",
+        "status": "ok",
+        "input_tokens": 7866,
+        "cached_input_tokens": 0,
+        "output_tokens": 338,
+        "measured": true,
+        "latency_ms": 7629,
+        "extras": {
+          "taskId": "37fe5734-a211-43ad-8847-33de3089450c",
+          "executor": "local-codex-login",
+          "permitId": "ab24fd14-a77a-4202-91f2-0e748580aefd",
+          "taskContextId": "ed6f3b66-1d49-4a50-a69b-061daf973140"
+        }
+      },
+      {
+        "agent_id": "worker",
+        "model": "gpt-5.5",
+        "status": "ok",
+        "input_tokens": 8287,
+        "cached_input_tokens": 0,
+        "output_tokens": 180,
+        "measured": true,
+        "latency_ms": 5638,
+        "extras": {
+          "taskId": "37fe5734-a211-43ad-8847-33de3089450c",
+          "executor": "local-codex-login",
+          "permitId": "0684262c-f272-4d62-876d-214255b831a8",
+          "taskContextId": "ed6f3b66-1d49-4a50-a69b-061daf973140"
+        }
+      },
+      {
+        "agent_id": "worker",
+        "model": "gpt-5.5",
+        "status": "ok",
+        "input_tokens": 1891,
+        "cached_input_tokens": 6656,
+        "output_tokens": 43,
+        "measured": true,
+        "latency_ms": 4132,
+        "extras": {
+          "taskId": "37fe5734-a211-43ad-8847-33de3089450c",
+          "executor": "local-codex-login",
+          "permitId": "60f9106b-fe93-4787-a7ea-d577e118125a",
+          "taskContextId": "ed6f3b66-1d49-4a50-a69b-061daf973140"
+        }
+      },
+      {
+        "agent_id": "verifier",
+        "model": "gpt-5.5",
+        "status": "ok",
+        "input_tokens": 7905,
+        "cached_input_tokens": 0,
+        "output_tokens": 165,
+        "measured": true,
+        "latency_ms": 5312,
+        "extras": {
+          "taskId": "8ac77d5e-377e-47e0-93b1-f309f288d4a7",
+          "executor": "local-codex-login",
+          "permitId": "627d2ee6-2e1c-41ba-815c-bdb7c1f222a0",
+          "taskContextId": "67a1d991-a28d-4737-9ae1-7033daaf64e4"
+        }
+      },
+      {
+        "agent_id": "verifier",
+        "model": "gpt-5.5",
+        "status": "ok",
+        "input_tokens": 8192,
+        "cached_input_tokens": 0,
+        "output_tokens": 234,
+        "measured": true,
+        "latency_ms": 6065,
+        "extras": {
+          "taskId": "8ac77d5e-377e-47e0-93b1-f309f288d4a7",
+          "executor": "local-codex-login",
+          "permitId": "124bc6be-875f-4fb0-847c-c2c5e9379fda",
+          "taskContextId": "67a1d991-a28d-4737-9ae1-7033daaf64e4"
+        }
+      },
+      {
+        "agent_id": "verifier",
+        "model": "gpt-5.5",
+        "status": "ok",
+        "input_tokens": 838,
+        "cached_input_tokens": 7680,
+        "output_tokens": 117,
+        "measured": true,
+        "latency_ms": 4339,
+        "extras": {
+          "taskId": "8ac77d5e-377e-47e0-93b1-f309f288d4a7",
+          "executor": "local-codex-login",
+          "permitId": "ee1b88a3-e907-48f5-baa0-c9a0deda5c56",
+          "taskContextId": "67a1d991-a28d-4737-9ae1-7033daaf64e4"
+        }
+      },
+      {
+        "agent_id": "aida",
+        "model": "gpt-5.5",
+        "status": "ok",
+        "input_tokens": 7686,
+        "cached_input_tokens": 0,
+        "output_tokens": 35,
+        "measured": true,
+        "latency_ms": 2806,
+        "extras": {
+          "taskId": "139794b3-3416-43ea-9e88-74c6fc32dcd6",
+          "executor": "local-codex-login",
+          "permitId": "cee3893b-cab5-4691-a9b5-b916d1e7e998",
+          "taskContextId": "38494ba3-6b91-4191-be4b-5c59ac8b5eed"
+        }
+      },
+      {
+        "agent_id": "verifier",
+        "model": "gpt-5.5",
+        "status": "ok",
+        "input_tokens": 1511,
+        "cached_input_tokens": 7680,
+        "output_tokens": 343,
+        "measured": true,
+        "latency_ms": 26686,
+        "extras": {
+          "taskId": "8ac77d5e-377e-47e0-93b1-f309f288d4a7",
+          "executor": "local-codex-login",
+          "permitId": "01d018df-4c1f-44fa-bbee-63924328495d",
+          "taskContextId": "67a1d991-a28d-4737-9ae1-7033daaf64e4"
+        }
+      },
+      {
+        "agent_id": "verifier",
+        "model": "gpt-5.5",
+        "status": "ok",
+        "input_tokens": 1895,
+        "cached_input_tokens": 7680,
+        "output_tokens": 134,
+        "measured": true,
+        "latency_ms": 4081,
+        "extras": {
+          "taskId": "8ac77d5e-377e-47e0-93b1-f309f288d4a7",
+          "executor": "local-codex-login",
+          "permitId": "17707ef5-e855-48a1-992f-ffd215104f0f",
+          "taskContextId": "67a1d991-a28d-4737-9ae1-7033daaf64e4"
+        }
+      },
+      {
+        "agent_id": "verifier",
+        "model": "gpt-5.5",
+        "status": "ok",
+        "input_tokens": 10004,
+        "cached_input_tokens": 0,
+        "output_tokens": 95,
+        "measured": true,
+        "latency_ms": 4476,
+        "extras": {
+          "taskId": "8ac77d5e-377e-47e0-93b1-f309f288d4a7",
+          "executor": "local-codex-login",
+          "permitId": "f24a0ef8-e30b-48f5-8c5e-de8f69ed2c27",
+          "taskContextId": "67a1d991-a28d-4737-9ae1-7033daaf64e4"
+        }
+      },
+      {
+        "agent_id": "aida",
+        "model": "gpt-5.5",
+        "status": "ok",
+        "input_tokens": 8428,
+        "cached_input_tokens": 0,
+        "output_tokens": 337,
+        "measured": true,
+        "latency_ms": 8280,
+        "extras": {
+          "taskId": "c1033df0-f9ea-414a-820e-024a0793fab7",
+          "executor": "local-codex-login",
+          "permitId": "1859f9d9-7856-497d-bdf2-cb26a88bba2b",
+          "taskContextId": "8a18eaca-67f0-46a6-a0d4-c8887a4e4855"
+        }
+      },
+      {
+        "agent_id": "aida",
+        "model": "gpt-5.5",
+        "status": "ok",
+        "input_tokens": 8903,
+        "cached_input_tokens": 0,
+        "output_tokens": 422,
+        "measured": true,
+        "latency_ms": 9355,
+        "extras": {
+          "taskId": "c1033df0-f9ea-414a-820e-024a0793fab7",
+          "executor": "local-codex-login",
+          "permitId": "7adc4ff6-3a46-4888-9de7-73b33efed007",
+          "taskContextId": "8a18eaca-67f0-46a6-a0d4-c8887a4e4855"
+        }
+      },
+      {
+        "agent_id": "aida",
+        "model": "gpt-5.5",
+        "status": "ok",
+        "input_tokens": 9366,
+        "cached_input_tokens": 0,
+        "output_tokens": 151,
+        "measured": true,
+        "latency_ms": 5093,
+        "extras": {
+          "taskId": "c1033df0-f9ea-414a-820e-024a0793fab7",
+          "executor": "local-codex-login",
+          "permitId": "18cdc10f-618b-4167-b4cc-4cb9449d026c",
+          "taskContextId": "8a18eaca-67f0-46a6-a0d4-c8887a4e4855"
+        }
+      },
+      {
+        "agent_id": "aida",
+        "model": "gpt-5.5",
+        "status": "ok",
+        "input_tokens": 4209,
+        "cached_input_tokens": 5632,
+        "output_tokens": 101,
+        "measured": true,
+        "latency_ms": 3661,
+        "extras": {
+          "taskId": "c1033df0-f9ea-414a-820e-024a0793fab7",
+          "executor": "local-codex-login",
+          "permitId": "e750ab5c-6670-4741-816e-660f3fa86349",
+          "taskContextId": "8a18eaca-67f0-46a6-a0d4-c8887a4e4855"
+        }
+      }
+    ],
+    "modelPermits": [
+      {
+        "task_id": "573e7c53-37bc-44ba-bbc3-c4051dc1b44e",
+        "principal_id": "aida",
+        "outcome": "SETTLED",
+        "references_json": {
+          "model": "gpt-5.5",
+          "runId": "task-local:82f9acc9-fd7e-4779-afea-49eb612cc9fc",
+          "contextId": "25229ae5-086f-47f8-b546-4815de75fe6e",
+          "generation": 1,
+          "receiptHash": "02fdea230c6c1e112efbd7c13b9dd55d278fcf8e945b35c065e89066fa47362b",
+          "requestHash": "b7a73475d5ce6653f3ac32b044d334123e4360a78fe20e47a817db9f988a794e"
+        }
+      },
+      {
+        "task_id": "c1033df0-f9ea-414a-820e-024a0793fab7",
+        "principal_id": "aida",
+        "outcome": "SETTLED",
+        "references_json": {
+          "model": "gpt-5.5",
+          "runId": "task-local:430b6f1f-7370-4d95-bd73-bc1f130fa771",
+          "contextId": "64e1b0f8-8c0a-4ea7-8d07-9f34564049ce",
+          "generation": 1,
+          "receiptHash": "51ff453f93fddaa8618d8376b8e19dfffeab4552aea61a5afb9f620c002e1605",
+          "requestHash": "a8c08c1a1d103a9e0f510671d2868df9a7bb2172323afbc59c9329c26db8daab"
+        }
+      },
+      {
+        "task_id": "c1033df0-f9ea-414a-820e-024a0793fab7",
+        "principal_id": "aida",
+        "outcome": "SETTLED",
+        "references_json": {
+          "model": "gpt-5.5",
+          "runId": "task-local:430b6f1f-7370-4d95-bd73-bc1f130fa771",
+          "contextId": "64e1b0f8-8c0a-4ea7-8d07-9f34564049ce",
+          "generation": 1,
+          "receiptHash": "60a4b1a9d22e7c13d7a03736d2e99d3c69565ff842cfffe925ae9df88443a436",
+          "requestHash": "fc7baeb57e9df4cc0e54abfff8a8acf326ca4f4279404a9bb1b8f2cad44b4dff"
+        }
+      },
+      {
+        "task_id": "37fe5734-a211-43ad-8847-33de3089450c",
+        "principal_id": "worker",
+        "outcome": "SETTLED",
+        "references_json": {
+          "model": "gpt-5.5",
+          "runId": "task-local:992c8f26-dd32-48ef-896f-171678d86429",
+          "contextId": "ed6f3b66-1d49-4a50-a69b-061daf973140",
+          "generation": 1,
+          "receiptHash": "35d40d0096efe405445c59aa58ff63635405fa97c8c345b04d65b5de9b4f68dd",
+          "requestHash": "30a9e32420d31d6e2ce9750173df861935576d03bbad739e4db856fc7915a9ba"
+        }
+      },
+      {
+        "task_id": "37fe5734-a211-43ad-8847-33de3089450c",
+        "principal_id": "worker",
+        "outcome": "SETTLED",
+        "references_json": {
+          "model": "gpt-5.5",
+          "runId": "task-local:992c8f26-dd32-48ef-896f-171678d86429",
+          "contextId": "ed6f3b66-1d49-4a50-a69b-061daf973140",
+          "generation": 1,
+          "receiptHash": "d99d90aeb0aef878e0e70515b7df01c3dac550272509f327079f0976c244271c",
+          "requestHash": "04ecebbb09c263c07b5c7312d3e4a18b5d0dd628f85a4c5fc80634c37cf1b47a"
+        }
+      },
+      {
+        "task_id": "37fe5734-a211-43ad-8847-33de3089450c",
+        "principal_id": "worker",
+        "outcome": "SETTLED",
+        "references_json": {
+          "model": "gpt-5.5",
+          "runId": "task-local:992c8f26-dd32-48ef-896f-171678d86429",
+          "contextId": "ed6f3b66-1d49-4a50-a69b-061daf973140",
+          "generation": 1,
+          "receiptHash": "15dfc708dab8970022c7116eac2f7e2595eff4d280d2df6e703a59e4c365e264",
+          "requestHash": "e7c354d9169e5fc1716a069d9951fd0c180200dbd47f7e75c33b3dbcdce3c612"
+        }
+      },
+      {
+        "task_id": "37fe5734-a211-43ad-8847-33de3089450c",
+        "principal_id": "worker",
+        "outcome": "SETTLED",
+        "references_json": {
+          "model": "gpt-5.5",
+          "runId": "task-local:992c8f26-dd32-48ef-896f-171678d86429",
+          "contextId": "ed6f3b66-1d49-4a50-a69b-061daf973140",
+          "generation": 1,
+          "receiptHash": "5de5163f9236a0db15bc3d2d04bdcb05b19a2a39e43bc46411dc98fa398db40c",
+          "requestHash": "fd3b61ea2e876aec8ea2b8afa97bb9a5f513f97f2676cf693417f7e6615a52ba"
+        }
+      },
+      {
+        "task_id": "8ac77d5e-377e-47e0-93b1-f309f288d4a7",
+        "principal_id": "verifier",
+        "outcome": "SETTLED",
+        "references_json": {
+          "model": "gpt-5.5",
+          "runId": "task-local:0009e538-26d0-4d28-9924-bbc160fb5dad",
+          "contextId": "67a1d991-a28d-4737-9ae1-7033daaf64e4",
+          "generation": 1,
+          "receiptHash": "bb46f0df3591ce3768aad58d66be7183369970776dfe993afe29d2a8852e94d8",
+          "requestHash": "1535704f55670d06de70bc928d111fedbf44da96169b3b8655cc671a3944300a"
+        }
+      },
+      {
+        "task_id": "8ac77d5e-377e-47e0-93b1-f309f288d4a7",
+        "principal_id": "verifier",
+        "outcome": "SETTLED",
+        "references_json": {
+          "model": "gpt-5.5",
+          "runId": "task-local:0009e538-26d0-4d28-9924-bbc160fb5dad",
+          "contextId": "67a1d991-a28d-4737-9ae1-7033daaf64e4",
+          "generation": 1,
+          "receiptHash": "3350eb68d8715dad061b37e60da8f60f680a59661610cd6f7d43247a67ec1296",
+          "requestHash": "dcb013959bc3cc7d03955bb5cf98e7f1c7af26d01cd4a4cd87fe618cd8af44a3"
+        }
+      },
+      {
+        "task_id": "8ac77d5e-377e-47e0-93b1-f309f288d4a7",
+        "principal_id": "verifier",
+        "outcome": "SETTLED",
+        "references_json": {
+          "model": "gpt-5.5",
+          "runId": "task-local:0009e538-26d0-4d28-9924-bbc160fb5dad",
+          "contextId": "67a1d991-a28d-4737-9ae1-7033daaf64e4",
+          "generation": 1,
+          "receiptHash": "816d8ea794a1680eebda481863ecbe9f7d9d9e4b45256f7a5523e23f7cda7801",
+          "requestHash": "b503004b7391a184e3e0c86d01b92a17990389d315f450221c2b440f013eb549"
+        }
+      },
+      {
+        "task_id": "8ac77d5e-377e-47e0-93b1-f309f288d4a7",
+        "principal_id": "verifier",
+        "outcome": "SETTLED",
+        "references_json": {
+          "model": "gpt-5.5",
+          "runId": "task-local:0009e538-26d0-4d28-9924-bbc160fb5dad",
+          "contextId": "67a1d991-a28d-4737-9ae1-7033daaf64e4",
+          "generation": 1,
+          "receiptHash": "0bab460386d7b0fcdf39c71817b7e0c05eaa5538e79620b92b98cc30a62a4e9b",
+          "requestHash": "8022e9013482ddb2cb9e9b5cebfff51be61982dc4d3ba1149ed019c594fa6f33"
+        }
+      },
+      {
+        "task_id": "139794b3-3416-43ea-9e88-74c6fc32dcd6",
+        "principal_id": "aida",
+        "outcome": "SETTLED",
+        "references_json": {
+          "model": "gpt-5.5",
+          "runId": "task-local:41ecfd0c-71da-4d7b-b58c-afe0e19311c4",
+          "contextId": "38494ba3-6b91-4191-be4b-5c59ac8b5eed",
+          "generation": 1,
+          "receiptHash": "4c122cceed691a863385742d46520145e2847aea814b0e6c546dcccb3c570cf0",
+          "requestHash": "b30dc30d90447def8592da259d7c4154928fe735910cabd429185d16faef7810"
+        }
+      },
+      {
+        "task_id": "8ac77d5e-377e-47e0-93b1-f309f288d4a7",
+        "principal_id": "verifier",
+        "outcome": "SETTLED",
+        "references_json": {
+          "model": "gpt-5.5",
+          "runId": "task-local:0009e538-26d0-4d28-9924-bbc160fb5dad",
+          "contextId": "67a1d991-a28d-4737-9ae1-7033daaf64e4",
+          "generation": 1,
+          "receiptHash": "d5b8d9455dc2b3b73c90012ec4159dc30188ef2520aae8ddd697d6aeec4787f6",
+          "requestHash": "31db6ae0b5b9efe2e25747a83277f205dcbeb0043b8e08c32cbd7a69f5253275"
+        }
+      },
+      {
+        "task_id": "8ac77d5e-377e-47e0-93b1-f309f288d4a7",
+        "principal_id": "verifier",
+        "outcome": "SETTLED",
+        "references_json": {
+          "model": "gpt-5.5",
+          "runId": "task-local:0009e538-26d0-4d28-9924-bbc160fb5dad",
+          "contextId": "67a1d991-a28d-4737-9ae1-7033daaf64e4",
+          "generation": 1,
+          "receiptHash": "df46cb5e5b4d7803e1f4490c9c9541528dce55612bad66ecd8f5bb0cd703b9a8",
+          "requestHash": "22aea8e8cce05870e4b58d19067ac493ec9b2f08d1600db68a28e2f41fb2f0e9"
+        }
+      },
+      {
+        "task_id": "c1033df0-f9ea-414a-820e-024a0793fab7",
+        "principal_id": "aida",
+        "outcome": "SETTLED",
+        "references_json": {
+          "model": "gpt-5.5",
+          "runId": "task-local:c036d216-3977-416f-90c4-75caf7acc5d2",
+          "contextId": "8a18eaca-67f0-46a6-a0d4-c8887a4e4855",
+          "generation": 1,
+          "receiptHash": "723680bcb13a86745620ae51cd0b8ea7ac10ef6bbeea52b5e0a3c2d78865d184",
+          "requestHash": "3a952601a7c9aade1e547564e88b7b09527eacb7b2b93571c4016038a17cb85c"
+        }
+      },
+      {
+        "task_id": "c1033df0-f9ea-414a-820e-024a0793fab7",
+        "principal_id": "aida",
+        "outcome": "SETTLED",
+        "references_json": {
+          "model": "gpt-5.5",
+          "runId": "task-local:c036d216-3977-416f-90c4-75caf7acc5d2",
+          "contextId": "8a18eaca-67f0-46a6-a0d4-c8887a4e4855",
+          "generation": 1,
+          "receiptHash": "3a424a2def98964d4adf1543975804e7684b8d78795120387cc78b9ac260ff62",
+          "requestHash": "2f7ffb3430a380330f84a4b27360ef6737d83af235a40221f6a6afde2b123ca9"
+        }
+      },
+      {
+        "task_id": "c1033df0-f9ea-414a-820e-024a0793fab7",
+        "principal_id": "aida",
+        "outcome": "SETTLED",
+        "references_json": {
+          "model": "gpt-5.5",
+          "runId": "task-local:c036d216-3977-416f-90c4-75caf7acc5d2",
+          "contextId": "8a18eaca-67f0-46a6-a0d4-c8887a4e4855",
+          "generation": 1,
+          "receiptHash": "e2eeedff965b6f8e596e73366a7a8b4dd1fd961a3894b87a70988d3fa896da4c",
+          "requestHash": "4be8d062e1bd34cfae07a23e8148f727d6e9c2b16730d6f31bb954c2da0cd747"
+        }
+      },
+      {
+        "task_id": "c1033df0-f9ea-414a-820e-024a0793fab7",
+        "principal_id": "aida",
+        "outcome": "SETTLED",
+        "references_json": {
+          "model": "gpt-5.5",
+          "runId": "task-local:c036d216-3977-416f-90c4-75caf7acc5d2",
+          "contextId": "8a18eaca-67f0-46a6-a0d4-c8887a4e4855",
+          "generation": 1,
+          "receiptHash": "9011a3962b41fe914121d0cb6fb58f50df4389e19450ebcaa54f57df797d3f7d",
+          "requestHash": "fa6b3478a22eb4c0abd67d440c99603a8c055ac6050c6d55de89932255e614d7"
+        }
+      }
+    ],
+    "workspace": [
+      {
+        "mode": "LEGACY",
+        "generation": 8
+      }
+    ],
+    "liveExecutors": []
+  },
+  "downloads": [
+    {
+      "name": "task-4acc7be0-bf83-4874-a8c1-d4ea0b8d022a.txt",
+      "bytes": 2,
+      "sha256": "73475cb40a568e8da8a045ced110137e159f890ac4da883b6b17dc651b3a8049",
+      "content": "42"
+    }
+  ],
+  "screenshots": [
+    {
+      "path": "docs/verification/browser-local-repair-20261004/aida-definition-v2.png",
+      "sha256": "17fc6cad339a35fb393d89baa0b229dba73dcf387fffca0401938b4a59305c4a"
+    },
+    {
+      "path": "docs/verification/browser-local-repair-20261004/aida-local-agent-settings.png",
+      "sha256": "f94c325c58c837fba1e03a3b92616456dfb5167ee8f608d2451494dfc55a6caa"
+    },
+    {
+      "path": "docs/verification/browser-local-repair-20261004/cleanup-legacy.png",
+      "sha256": "f895b12112a0878c432acdaa7d4433c802b112db9086c14af534c855875b6cd4"
+    },
+    {
+      "path": "docs/verification/browser-local-repair-20261004/config-legacy.png",
+      "sha256": "55a76ac2f5f9dd55f2bed3a54551a43701475ceaeec6789cc7e8fd4ba61bbf7b"
+    },
+    {
+      "path": "docs/verification/browser-local-repair-20261004/final-config-compatibility.png",
+      "sha256": "2262d3fe29cd9d766be62d4dc32c04415b77759762cc22fc061cbe30c797f703"
+    },
+    {
+      "path": "docs/verification/browser-local-repair-20261004/lan-drive.png",
+      "sha256": "2a260c978a9271c090afee25088a0ed04c117e13b9d759cc90854626fef3b7da"
+    },
+    {
+      "path": "docs/verification/browser-local-repair-20261004/local-admission.png",
+      "sha256": "ab65c7c215e18b1e52406ca13df24f0d52e9880f3ebf34313fd23df14e006075"
+    },
+    {
+      "path": "docs/verification/browser-local-repair-20261004/local-aida-delivery.png",
+      "sha256": "f72e58d4fcef637b3b4865252ceb09d91bb3a40af539ca0cba0bacee8ccd7b7e"
+    },
+    {
+      "path": "docs/verification/browser-local-repair-20261004/mobile-aida-delivery.png",
+      "sha256": "2d301f6ed78943cef29a914068b4544520bf57ce929c3a01f63646c5b37f64c8"
+    },
+    {
+      "path": "docs/verification/browser-local-repair-20261004/mobile-cancel.png",
+      "sha256": "e14a73de69074d78b3979b0ad14815eb88c08456fff7db9d345f5e775c8a3489"
+    },
+    {
+      "path": "docs/verification/browser-local-repair-20261004/mobile-current.png",
+      "sha256": "d31fb8a2fb7652f040144c39b8aa370ad8a7b701625a01246b3dd9d0c79917b6"
+    },
+    {
+      "path": "docs/verification/browser-local-repair-20261004/mobile-task-settings.png",
+      "sha256": "e0f7237fcc80d7576af0fe4231c8050bb32d36cf33fd9187fd3a12bd22cb53a7"
+    },
+    {
+      "path": "docs/verification/browser-local-repair-20261004/multi-agent-bindings.png",
+      "sha256": "b10aae0ca68eb504b7fc1bd3ca05f2e242208566f8d2f0f2c1cb8cd6b4992156"
+    },
+    {
+      "path": "docs/verification/browser-local-repair-20261004/multi-agent-delivery.png",
+      "sha256": "7eb19447ead6fc2c6de87296884bc8d291a9ca975977a28c31672b9217bbc197"
+    },
+    {
+      "path": "docs/verification/browser-local-repair-20261004/workspace-task-settings.png",
+      "sha256": "6d9df05ad452e0b93f5c29f1582ac9b9d8d3b83cc0bd5f5b95e0d2213a8e6392"
+    }
+  ],
+  "sourceHashes": [
+    {
+      "path": "doc/multi-agent-concepts-and-data-flow.md",
+      "sha256": "809a9c159f46f50ab7b47b3fd03095430ccbf4a65ff65e82e6eb3ebf5afd6d11"
+    },
+    {
+      "path": "docs/TASK_EXECUTION.zh-CN.md",
+      "sha256": "e9ca1f05d08e4329d041f90c8cc42c9b661d3aec6079b0870d0c58035d692f67"
+    },
+    {
+      "path": "docs/TASK_EXECUTION_BROWSER_E2E.zh-CN.md",
+      "sha256": "46ac0d0a743e6add220dbff807a05e1f88941696b3ac2a10b9aebf4c5db44f2e"
+    },
+    {
+      "path": "docs/TASK_EXECUTION_LOCAL_REPAIR.zh-CN.md",
+      "sha256": "6f5690ebd7dcc52991584fa561aee0b0a20338f89622072de837996b6cc6f360"
+    },
+    {
+      "path": "docs/TASK_EXECUTION_VERIFICATION.zh-CN.md",
+      "sha256": "b516f9ca4a5af4bbde13b43b2f6b99213ae474b3b9ce0cf85ffc03f7dffca65b"
+    },
+    {
+      "path": "openspec/changes/introduce-channel-task-execution/design.md",
+      "sha256": "7fe060c71b5210f4aa9670b316f9fb0b35bd0accb7c8e463a30aa8a4a9a89543"
+    },
+    {
+      "path": "openspec/changes/introduce-channel-task-execution/proposal.md",
+      "sha256": "a895471de2ebb00c27f7f3f0f553cd229f916c8a374fb6cb23df204311905f41"
+    },
+    {
+      "path": "openspec/changes/introduce-channel-task-execution/specs/agent-definitions-and-bindings/spec.md",
+      "sha256": "4b79dac1efb50bfc8aa23f8d9d717d8594ea23825395131769c6d19788a072b7"
+    },
+    {
+      "path": "openspec/changes/introduce-channel-task-execution/specs/channel-agent-knowledge/spec.md",
+      "sha256": "c8efac86f50d809741b9262f7498fcdc95d6b2719adf250fc6a8526793c5b4cb"
+    },
+    {
+      "path": "openspec/changes/introduce-channel-task-execution/specs/channel-task-routing/spec.md",
+      "sha256": "175972bf9a3661a4417316ed5c44dec4a24f8d06c86ec8f1d8a52f604c5cf0bf"
+    },
+    {
+      "path": "openspec/changes/introduce-channel-task-execution/specs/task-access-control/spec.md",
+      "sha256": "a67affb5ed0beb82476d3eb1462dc0295cc854ed2652760f99a968ebcf97e2e7"
+    },
+    {
+      "path": "openspec/changes/introduce-channel-task-execution/specs/task-artifact-delivery/spec.md",
+      "sha256": "8ceffd7f544d62e251f2335c957e5f0046f5474baed8bfb008c065a209e6f39c"
+    },
+    {
+      "path": "openspec/changes/introduce-channel-task-execution/specs/task-context-isolation/spec.md",
+      "sha256": "03690babd1e35c324c51d8cc0b5f0b7b4e1cd9d43d35966240f84ffa2320aa78"
+    },
+    {
+      "path": "openspec/changes/introduce-channel-task-execution/specs/task-governance-compatibility/spec.md",
+      "sha256": "d06e6967b910eb751bbe667b11b61bd826ec814687b4afdb420e88298568f757"
+    },
+    {
+      "path": "openspec/changes/introduce-channel-task-execution/specs/task-plan-delegation/spec.md",
+      "sha256": "bd3672559aac66b43c34fe0ac99d71ece8c1b09f2c8ac751143abe96d4f59042"
+    },
+    {
+      "path": "openspec/changes/introduce-channel-task-execution/specs/task-runtime-dispatch/spec.md",
+      "sha256": "36f807cba4f073abb94d2b91a4ea00d77cc1c6c79f2fe130407b1d327bf5a646"
+    },
+    {
+      "path": "openspec/changes/introduce-channel-task-execution/specs/task-workspace-migration/spec.md",
+      "sha256": "96409c5b0229337fe2700c9a51d2f7de7eab487f15b97966c6ccc8c86ee67b58"
+    },
+    {
+      "path": "openspec/changes/introduce-channel-task-execution/tasks.md",
+      "sha256": "386975fe53891afdd39fc2fad148c836a5a9308e0f43012c2b4df6722948adc8"
+    },
+    {
+      "path": "scripts/qualify-local-task.mjs",
+      "sha256": "e9802464f1d7f2e8db95946a69db55c490c8ecb55fb5df7fc14e574c13e0deb1"
+    },
+    {
+      "path": "scripts/test-task-chat-ui.mjs",
+      "sha256": "80c03d6d00aef3495d1d9c9779dc24727f80aa052317701af9a25f7e13aba419"
+    },
+    {
+      "path": "scripts/verify-channel-tasks.mjs",
+      "sha256": "3b3af2323d6da94ec141c31c205109f72263ad83c839bf64e90062fe513da5b3"
+    },
+    {
+      "path": "server/src/__integration__/channel-task-execution.test.ts",
+      "sha256": "f4baa27556ef2600080aec3d88673dbf48b352a29152da7211d89ca48b3fbb04"
+    },
+    {
+      "path": "server/src/__runtime__/task-local-boundary.test.ts",
+      "sha256": "38d96391e73dac303661cbdf9b38236eaef69678f7ba216a4d1bf17fdad749c7"
+    },
+    {
+      "path": "server/src/__runtime__/task-local-workflow.test.ts",
+      "sha256": "2ba0eb6fec2f2a1dee44eec0ec0456f2284e49d3e1b1ca6ea22a135877b2064a"
+    },
+    {
+      "path": "server/src/__tests__/task-local-model.test.ts",
+      "sha256": "8ea9b3bf204e255ae6e1e2b1b5d13dca61c3d2c6f7c63e082a3f6313f367c597"
+    },
+    {
+      "path": "server/src/api/tasks-router.ts",
+      "sha256": "e6bc8b5de5b5997f6daf8026c2c29afd2d993014bda160ddfda3f1b73c1917cd"
+    },
+    {
+      "path": "server/src/tasks/codex-login-model.ts",
+      "sha256": "5f73846a720217a6775b387724bc4303055eb230832272b2c4a8c97774ff0bd9"
+    },
+    {
+      "path": "server/src/tasks/contracts.ts",
+      "sha256": "ebc77ce6507ec2957073beae58db5e11fffc77d998ded09c3fb8783a5f8e93fd"
+    },
+    {
+      "path": "server/src/tasks/execution.ts",
+      "sha256": "3ca84de4d5bfeb0c11ec98604bdb5afef84eb0176b1a4d79e5bbaa78fc3acc9e"
+    },
+    {
+      "path": "server/src/tasks/governance.ts",
+      "sha256": "de02f6189b7f3bfa8b971b34cd7d0095b04ac29e330fdf9e6ded9f359734ca8f"
+    },
+    {
+      "path": "server/src/tasks/ingress.ts",
+      "sha256": "6d589e1b25d2f12ee989e03e4d44c94350a71d07b87505044c86c224037fc369"
+    },
+    {
+      "path": "server/src/tasks/knowledge.ts",
+      "sha256": "b939ba21c83eff22f18881fe7b63fc25aadf0866932789a5d5095248572c3a70"
+    },
+    {
+      "path": "server/src/tasks/legacy-guard.ts",
+      "sha256": "5c336d4cd786ab363e5cb95553cfed20434b435590a3e886448c614eef6519a4"
+    },
+    {
+      "path": "server/src/tasks/local-client.ts",
+      "sha256": "13080bb1d73298e8fe96572faa08793a37aa21e37b1a15422b7e6116b900640d"
+    },
+    {
+      "path": "server/src/tasks/local-model.ts",
+      "sha256": "5bed806975866084c4e19c1f4058c55e2a5479cd1f2187a97e5ee306fc6f2c02"
+    },
+    {
+      "path": "server/src/tasks/local-sandbox.ts",
+      "sha256": "88eb129fa0cd31193650591a6ef661fbfa38696f76bca59bf4466f6638ec65c0"
+    },
+    {
+      "path": "server/src/tasks/operations.ts",
+      "sha256": "06465a6f4d92d3efad3f374a25849051d4571dd3e383cb27b1272597257fd7a7"
+    },
+    {
+      "path": "server/src/tasks/plans.ts",
+      "sha256": "1434979a6116b79ef9ecd6cdf6e8d1b129546a91462b32a41023926339c95117"
+    },
+    {
+      "path": "server/src/tasks/runner.ts",
+      "sha256": "bd221f7c19fefdf2bc5659be6dea8851c8f8b01b737a6413e899d048d802f880"
+    },
+    {
+      "path": "server/src/tasks/runtime-endpoints.ts",
+      "sha256": "ae9b5d2f0c05d511c06f0e23166b807751632be1fc0feef549a931b5c0a30cb9"
+    },
+    {
+      "path": "server/src/tasks/service.ts",
+      "sha256": "9134e981d16b9337d3d5c004647a5c6907559828c6cf0764614083484aa2794e"
+    },
+    {
+      "path": "server/src/tasks/workspace.ts",
+      "sha256": "d6335b349b2bc0ddb053700a0e2d63876e2df73ba485c485a3b6b643a18fef9c"
+    },
+    {
+      "path": "src/api/client.ts",
+      "sha256": "1eee9cef61fe863dc7e252822f13a8549f1b964445d6a21dd81ae63dfcc8f7f5"
+    },
+    {
+      "path": "src/components/TaskArtifactLinks.tsx",
+      "sha256": "3856a3b0c974ac441983150fea85f49a31629a74c9cfc559a74196cc371f6152"
+    },
+    {
+      "path": "src/components/TaskContextPanel.tsx",
+      "sha256": "2a60129ae1f5ff3c148adc5a49ab711a267effedff933f09c9089f84e4f21ab5"
+    },
+    {
+      "path": "src/components/TaskSettings.tsx",
+      "sha256": "89b3b27d62cc349336e7dea72b5603f99bb4ebaee7d3a578060404be7421a701"
+    },
+    {
+      "path": "src/components/WorkspaceSettingsModal.tsx",
+      "sha256": "e03d72d5f7a2f6057a8a2cfed6feda07fb589da1f25bb8801673f91b65b3903e"
+    },
+    {
+      "path": "src/lib/task-artifacts.ts",
+      "sha256": "0f610abff66de8e2b3d3b96d3c5b6895651530842b1a6051162eb9e82641d2fd"
+    }
+  ],
+  "cleanup": {
+    "dedicatedRuntimeStopped": true,
+    "testWorkspaceRestoredTo": "LEGACY",
+    "tasksAndArtifactsRetained": true,
+    "existingHostComputerConfigUntouched": true,
+    "temporaryLoginCredentialsNotInReport": true,
+    "browserClosedAndLoggedOut": true
+  },
+  "priorHistoricalFailureReceipt": "docs/verification/task-execution-browser-e2e-2026-10-04.json",
+  "openspec": {
+    "state": "all_done",
+    "progress": {
+      "total": 33,
+      "complete": 33,
+      "remaining": 0
+    },
+    "strictValidation": "PASSED"
+  }
+}

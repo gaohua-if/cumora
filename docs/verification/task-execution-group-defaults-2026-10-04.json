@@ -1,0 +1,344 @@
+{
+  "createdAt": "2026-10-04T11:44:32.119955+00:00",
+  "passed": true,
+  "scope": "Ordinary workspace configuration discovery and IM-group default Aida; OpenSpec tasks 10.1–10.3",
+  "url": "http://192.168.28.113:5181",
+  "deployment": {
+    "health": "healthy",
+    "image": "sha256:a04681e5e28c81948f680711a461c00187499d35d90b6b5e788969d5c0a1f20c"
+  },
+  "productionReadOnlySnapshot": {
+    "workspace": {
+      "id": "co-a09a2bc0-f",
+      "name": "gaohua chen's workspace"
+    },
+    "mode": "LEGACY",
+    "agents": [
+      {
+        "id": "aida-lnn7",
+        "name": "Aida",
+        "computerId": "comp-11c2fc72-048",
+        "engine": "codex"
+      },
+      {
+        "id": "nova-f1a2",
+        "name": "Nova",
+        "computerId": "comp-11c2fc72-048",
+        "engine": "claude"
+      },
+      {
+        "id": "bram-af5f",
+        "name": "Bram",
+        "computerId": "comp-11c2fc72-048",
+        "engine": "claude"
+      },
+      {
+        "id": "atlas-4e3b",
+        "name": "Atlas",
+        "computerId": "comp-11c2fc72-048",
+        "engine": "claude"
+      },
+      {
+        "id": "iris-bb89",
+        "name": "Iris",
+        "computerId": "comp-11c2fc72-048",
+        "engine": "claude"
+      }
+    ],
+    "groups": [
+      {
+        "id": "g-00874670",
+        "title": "验证 · 默认 Aida 群聊",
+        "memberCount": 2,
+        "bindings": [
+          {
+            "agentId": "aida-lnn7",
+            "alias": "Aida",
+            "default": true,
+            "version": 1,
+            "role": "COORDINATOR"
+          }
+        ]
+      },
+      {
+        "id": "g-a220941a",
+        "title": "验证 · Aida 与专业 Agent",
+        "memberCount": 4,
+        "bindings": [
+          {
+            "agentId": "aida-lnn7",
+            "alias": "Aida",
+            "default": true,
+            "version": 2,
+            "role": "COORDINATOR"
+          },
+          {
+            "agentId": "atlas-4e3b",
+            "alias": "Atlas",
+            "default": false,
+            "version": 1,
+            "role": "WORK"
+          },
+          {
+            "agentId": "bram-af5f",
+            "alias": "Bram",
+            "default": false,
+            "version": 1,
+            "role": "WORK"
+          }
+        ]
+      },
+      {
+        "id": "allhands-677e5c2b-f",
+        "title": "Everyone",
+        "memberCount": 6,
+        "bindings": [
+          {
+            "agentId": "aida-lnn7",
+            "alias": "Aida",
+            "default": true,
+            "version": 1,
+            "role": "COORDINATOR"
+          },
+          {
+            "agentId": "atlas-4e3b",
+            "alias": "Atlas",
+            "default": false,
+            "version": 1,
+            "role": "WORK"
+          },
+          {
+            "agentId": "bram-af5f",
+            "alias": "Bram",
+            "default": false,
+            "version": 1,
+            "role": "WORK"
+          },
+          {
+            "agentId": "iris-bb89",
+            "alias": "Iris",
+            "default": false,
+            "version": 1,
+            "role": "WORK"
+          },
+          {
+            "agentId": "nova-f1a2",
+            "alias": "Nova",
+            "default": false,
+            "version": 1,
+            "role": "WORK"
+          }
+        ]
+      }
+    ]
+  },
+  "browser": {
+    "tool": "Headless Chrome 151/CDP",
+    "desktop": [
+      1440,
+      1000
+    ],
+    "mobile": [
+      390,
+      844
+    ],
+    "steps": [
+      "Desktop configuration navigation",
+      "Open original Everyone and automatically install Aida/member bindings",
+      "Ordinary group creator: default Aida only",
+      "Ordinary group creator: default Aida plus Atlas and Bram",
+      "Mobile Me configuration entry",
+      "Mobile binding save",
+      "New browser reads persisted three bindings and default Aida"
+    ],
+    "freshRead": {
+      "bindings": 3,
+      "defaultAida": true,
+      "alias": "Aida"
+    },
+    "finalObservedApplicationErrors": [],
+    "finalObservedFailedApiResponses": [],
+    "authentication": "Temporary server-issued session; signed out and browser closed. No user password changes.",
+    "apiSeeding": false,
+    "retainedVerificationGroups": [
+      "g-00874670",
+      "g-a220941a"
+    ],
+    "harnessCorrection": "Initial reload selected before target options loaded; repeated using target-option wait in fresh browser."
+  },
+  "integration": {
+    "tests": 3,
+    "pass": 3,
+    "fail": 0,
+    "skipped": 0,
+    "cancelled": 0,
+    "durableLog": {
+      "path": "/tmp/cumora-group-default-integration.log",
+      "sha256": "08f400d69c0cc60894a6da6ba3a8531854e4a11af5dbaa6630911407e1921286",
+      "text": "[db] schema is current at version 19\n[storage] local mode · server/uploads/ (set R2_* env to use R2)\n✔ ordinary solo/multi group creation installs one local Aida and live bindings under concurrent requests (19912.761655ms)\n✔ opening existing group initializes Aida once and preserves explicit default and task snapshots (13717.359843ms)\n✔ group initializer rejects non-members/private conversations and installation obeys existing quotas (13959.040376ms)\nℹ tests 3\nℹ suites 0\nℹ pass 3\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 48285.053527\n"
+    },
+    "fixtureCorrection": "Initial private conversation fixture NULL title corrected to meet existing NOT NULL constraint"
+  },
+  "uiRegression": {
+    "createdAt": "2026-10-04T11:09:35.222Z",
+    "suite": "ui",
+    "results": [
+      {
+        "label": "desktop/mobile Chrome interactions",
+        "logPath": "/tmp/cumora-task-verify-lrOWU3/0.log",
+        "code": 0,
+        "passed": true,
+        "tests": 7,
+        "pass": 7,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0,
+        "durableLog": {
+          "path": "/tmp/cumora-task-verify-lrOWU3/0.log",
+          "sha256": "4e38d5596cafa6303ef97c7254ff14ca60ff8f18c33fccb5455f571d50bea552",
+          "text": "[db] schema is current at version 19\n[storage] local mode · server/uploads/ (set R2_* env to use R2)\n[message-delivery] {\"phase\":\"request.received\",\"conversationId\":\"task-ui-channel\",\"authorId\":\"task-ui-owner\",\"clientId\":\"temp-d52x1j6icxbmutpyczo\"}\n[message-delivery] {\"phase\":\"response.finished\",\"conversationId\":\"task-ui-channel\",\"authorId\":\"task-ui-owner\",\"clientId\":\"temp-d52x1j6icxbmutpyczo\",\"status\":409}\n[message-delivery] {\"phase\":\"request.received\",\"conversationId\":\"task-ui-channel\",\"authorId\":\"task-ui-owner\",\"clientId\":\"temp-d52x1j6icxbmutpyczo\"}\n[message-delivery] {\"phase\":\"message.committed\",\"conversationId\":\"task-ui-channel\",\"authorId\":\"task-ui-owner\",\"clientId\":\"temp-d52x1j6icxbmutpyczo\",\"messageId\":\"m-17c3ad44-f6a4-4c40-9d0c-7194ce362db8\",\"sequence\":2}\n[message-delivery] {\"phase\":\"ws.enqueued\",\"conversationId\":\"task-ui-channel\",\"authorId\":\"task-ui-owner\",\"clientId\":\"temp-d52x1j6icxbmutpyczo\",\"messageId\":\"m-17c3ad44-f6a4-4c40-9d0c-7194ce362db8\"}\n[message-delivery] {\"phase\":\"response.finished\",\"conversationId\":\"task-ui-channel\",\"authorId\":\"task-ui-owner\",\"clientId\":\"temp-d52x1j6icxbmutpyczo\",\"messageId\":\"m-17c3ad44-f6a4-4c40-9d0c-7194ce362db8\",\"status\":202}\n{\"passed\":7,\"skipped\":0,\"checks\":[\"ambiguous send rollback\",\"shared desktop/mobile selection\",\"retry selected task\",\"blocked state\",\"drive/cancel\",\"authenticated hash-checked download\",\"revoked download denial\"]}\n"
+        }
+      }
+    ],
+    "passed": true
+  },
+  "staticChecks": {
+    "createdAt": "2026-10-04T11:11:01.122Z",
+    "suite": "checks",
+    "results": [
+      {
+        "label": "OpenSpec strict validation",
+        "logPath": "/tmp/cumora-task-verify-U8c7Re/0.log",
+        "code": 0,
+        "passed": true,
+        "durableLog": {
+          "path": "/tmp/cumora-task-verify-U8c7Re/0.log",
+          "sha256": "2a65473356561014caaf691c08ac28f64cf5977fb471a0ae90d38250dd8efc32",
+          "text": "Change 'introduce-channel-task-execution' is valid\n"
+        }
+      },
+      {
+        "label": "server types",
+        "logPath": "/tmp/cumora-task-verify-U8c7Re/1.log",
+        "code": 0,
+        "passed": true,
+        "durableLog": {
+          "path": "/tmp/cumora-task-verify-U8c7Re/1.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "text": ""
+        }
+      },
+      {
+        "label": "frontend types",
+        "logPath": "/tmp/cumora-task-verify-U8c7Re/2.log",
+        "code": 0,
+        "passed": true,
+        "durableLog": {
+          "path": "/tmp/cumora-task-verify-U8c7Re/2.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "text": ""
+        }
+      },
+      {
+        "label": "guard big-brain",
+        "logPath": "/tmp/cumora-task-verify-U8c7Re/3.log",
+        "code": 0,
+        "passed": true,
+        "durableLog": {
+          "path": "/tmp/cumora-task-verify-U8c7Re/3.log",
+          "sha256": "e9867cf0f3032db09dfb49e07adb777639bad36f1955e130e6b6de19583adb56",
+          "text": "✅ big-brain guard: every big-model use is gated (enforceModelPolicy / the daemon triage path). No unnecessary big-brain use.\n"
+        }
+      },
+      {
+        "label": "guard llm-tracked",
+        "logPath": "/tmp/cumora-task-verify-U8c7Re/4.log",
+        "code": 0,
+        "passed": true,
+        "durableLog": {
+          "path": "/tmp/cumora-task-verify-U8c7Re/4.log",
+          "sha256": "f2d5ca16686e36d5176a218ffca8392582ca6f88dbf17ca1a8b9bed0b197bdf3",
+          "text": "[guard-llm-tracked] OK — every sub2api callsite is tracked.\n"
+        }
+      },
+      {
+        "label": "guard engine-registry",
+        "logPath": "/tmp/cumora-task-verify-U8c7Re/5.log",
+        "code": 0,
+        "passed": true,
+        "durableLog": {
+          "path": "/tmp/cumora-task-verify-U8c7Re/5.log",
+          "sha256": "0efd23db63883058a3c175b10ff997770878a911a2bac2fe478252c4d44c51bb",
+          "text": "✅ engine registry guard: every engine in ENGINE_IDS is wired into all of its lists.\n"
+        }
+      }
+    ],
+    "passed": true
+  },
+  "finalOpenSpec": {
+    "change": "introduce-channel-task-execution",
+    "progress": {
+      "total": 36,
+      "complete": 36,
+      "remaining": 0
+    },
+    "state": "all_done",
+    "strictValidation": "Change 'introduce-channel-task-execution' is valid"
+  },
+  "sourceSha256": {
+    "doc/multi-agent-concepts-and-data-flow.md": "809a9c159f46f50ab7b47b3fd03095430ccbf4a65ff65e82e6eb3ebf5afd6d11",
+    "docs/TASK_EXECUTION.zh-CN.md": "d1aec783c0297feb8a86a363204f62f20c8779e1e95e6a11c5fd66724aa80661",
+    "docs/TASK_EXECUTION_GROUP_DEFAULTS.zh-CN.md": "2d3f9db8af28e745ed1e18a7a97208e8188bdef9961bd4740357325d882af020",
+    "docs/TASK_EXECUTION_LOCAL_REPAIR.zh-CN.md": "b4c12dbce9d5cd2b9c881151787c8115b30ad475e30dc35783a9d88e18898d3b",
+    "docs/TASK_EXECUTION_VERIFICATION.zh-CN.md": "a877acee58610687b7b42252577294700399a3ecc80d49fb862270798133f39a",
+    "openspec/changes/introduce-channel-task-execution/design.md": "c44936d0e054451b852cff61d5833d2575da63b13ca9c4055ccee8f4489a0916",
+    "openspec/changes/introduce-channel-task-execution/proposal.md": "cc9cd2a4260737d3a95ef8fd68ab780881e053d8f5337d556c16a8a8ca54c057",
+    "openspec/changes/introduce-channel-task-execution/specs/agent-definitions-and-bindings/spec.md": "9b9d2a771698a04d4f16274e8631fdd11ac45d2d5018d7216ce65f74ea444862",
+    "openspec/changes/introduce-channel-task-execution/specs/channel-agent-knowledge/spec.md": "c8efac86f50d809741b9262f7498fcdc95d6b2719adf250fc6a8526793c5b4cb",
+    "openspec/changes/introduce-channel-task-execution/specs/channel-task-routing/spec.md": "123d7210b44fe7b4ad667b4fa87f0aa66fee2425cce9489ee4bc7f88e9760e3d",
+    "openspec/changes/introduce-channel-task-execution/specs/task-access-control/spec.md": "a67affb5ed0beb82476d3eb1462dc0295cc854ed2652760f99a968ebcf97e2e7",
+    "openspec/changes/introduce-channel-task-execution/specs/task-artifact-delivery/spec.md": "8ceffd7f544d62e251f2335c957e5f0046f5474baed8bfb008c065a209e6f39c",
+    "openspec/changes/introduce-channel-task-execution/specs/task-context-isolation/spec.md": "03690babd1e35c324c51d8cc0b5f0b7b4e1cd9d43d35966240f84ffa2320aa78",
+    "openspec/changes/introduce-channel-task-execution/specs/task-governance-compatibility/spec.md": "d06e6967b910eb751bbe667b11b61bd826ec814687b4afdb420e88298568f757",
+    "openspec/changes/introduce-channel-task-execution/specs/task-plan-delegation/spec.md": "bd3672559aac66b43c34fe0ac99d71ece8c1b09f2c8ac751143abe96d4f59042",
+    "openspec/changes/introduce-channel-task-execution/specs/task-runtime-dispatch/spec.md": "36f807cba4f073abb94d2b91a4ea00d77cc1c6c79f2fe130407b1d327bf5a646",
+    "openspec/changes/introduce-channel-task-execution/specs/task-workspace-migration/spec.md": "96409c5b0229337fe2700c9a51d2f7de7eab487f15b97966c6ccc8c86ee67b58",
+    "openspec/changes/introduce-channel-task-execution/tasks.md": "e5ef171432eea8e72efd4fcba8c6312262f5e4f3f99a0a77d3bdf4455a8b94da",
+    "scripts/verify-channel-tasks.mjs": "82b6c78cdfa8d4d43d5602cb4800e374b5b01745a7d64965c3286a8cf439a834",
+    "server/src/__integration__/group-default-aida.test.ts": "6e08d1555f4f567c086fca13e683ae98879453f107393e6cebc9f528a4398c8c",
+    "server/src/api/router.ts": "37a4157a056c4fddaec3dd6e2587f2ea949bbac8585d1129423ba45cdf8a3c6d",
+    "server/src/tasks/default-aida.ts": "ca9ab8e785f910d071f0faf0527d35949f9f7498d2fcd5ed73a3319b80fec9a3",
+    "src/api/client.ts": "ff830ec0188ba621a583a05bf573fc816c4134a33870767f885c5a059b689130",
+    "src/components/GroupAida.tsx": "d4132a3b51df8589b8672b2c73067300b8bce1b94d509f05fa7fd4273922ca26",
+    "src/components/GroupCreator.tsx": "74888e6cd30d90466961892f162163f785b344cade4f94d9c0500579832254c4",
+    "src/components/SettingsView.tsx": "d8745529470ed2058571095cd723994407a3d0ae993bfe6422f3e0041d41b8ed",
+    "src/components/TaskContextPanel.tsx": "3bb299094c8dfbd77c55cc371a87a177ae529cbe6eda27383290e87994811dc2",
+    "src/components/TaskSettings.tsx": "976b12134caf209e210d3e11ced7793cdd164c95efef2c6702efba708c72042a",
+    "src/desktop/DesktopApp.tsx": "7d942d7e87fb6068e593817ee1fe6ef3d3c449ddaeb697146a48db9607896be0",
+    "src/desktop/Rail.tsx": "4568f806637887f745810d4b363ea34a1fa9ea611229c1d81cae92b9663d2391",
+    "src/locales/en.ts": "f93001e715c468a9a4041668be21dc5d4419afef9a04784a7390564f06d5bd40",
+    "src/locales/zh-CN.ts": "679336dbbff3a3a789a08fc8e99f92325faae121ff72ae3133fa96af481dc4f8",
+    "src/mobile/MobileApp.tsx": "563c4ea88c0091fb269bc89faee7f4246f492ce64a30d070fcdae995c76985d2",
+    "src/mobile/MobileMe.tsx": "e800a0740c6b6e216c3ce84807aeb136e91053c829440558c3b6776f31cebe44",
+    "src/types.ts": "95e92af2c39cb6d0025ea2c5656ab53b43a1d39eef368265b577a1d1d874a9e2"
+  },
+  "screenshotSha256": {
+    "docs/verification/group-default-aida-20261004/create-multi-default.png": "f351cde036df37c59c5cbdc49a9fbd17988fd65ebf0fefefb3356b21d406ae30",
+    "docs/verification/group-default-aida-20261004/create-solo-default.png": "8aa1a888287029015540a8e8969b42b4fb1669d7c3fd225a28483e7618995a36",
+    "docs/verification/group-default-aida-20261004/desktop-settings.png": "4bf498661dde9a6b5fb0bd21bdc91da2a238c649b6919790ccd6a141a6f04ff8",
+    "docs/verification/group-default-aida-20261004/existing-group-bindings.png": "6e450a1c966ec58b75bc0354f8bc808b56d0728a64e92b77e368d2019c853c79",
+    "docs/verification/group-default-aida-20261004/mobile-entry.png": "b0581cb61833850a520cf549326bae41329f689f1b049de5ea5486ae26f2f4cb",
+    "docs/verification/group-default-aida-20261004/mobile-save.png": "73144cde796a7b0d41b8a4a6f6160f5d55504f0e12182cad4148907ad98ebbee",
+    "docs/verification/group-default-aida-20261004/mobile-settings.png": "f6acf90871457719b481c0905ac1bd952e8f3f492a0c82ba1929d996fa140f1c",
+    "docs/verification/group-default-aida-20261004/multi-group-bindings.png": "e70a75846e70fcf91e5934dc6e707b1a99619986114b869768636f9c7a32cdab",
+    "docs/verification/group-default-aida-20261004/multi-group.png": "1369c669e86024141fa7dec3b4e12851ce0f678c2850221e4b00fae3de14ef68",
+    "docs/verification/group-default-aida-20261004/reloaded-persistence.png": "1f92b9b3b77ddd5951e1ff8b7e275774e5229c33aed98dd7f327a57bcb201a34",
+    "docs/verification/group-default-aida-20261004/solo-group.png": "2cdcc5fed3482dc2cbddab059e1453a456224f26a03192a9f8485f52c6c09093"
+  },
+  "limits": [
+    "No new real model Task executed in this business workspace; remains LEGACY",
+    "Previous 264-assertion run remains historical, not rerun in this phase",
+    "Cloud scenarios and Agent creation computerId:null finding R4 excluded",
+    "Unopened groups and local admission can still block readiness; activation remains explicit"
+  ]
+}

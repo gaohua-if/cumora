@@ -20,6 +20,7 @@ import { CalendarView } from './CalendarView'
 import { DocumentsView } from './DocumentsView'
 import { ObservabilityView } from './ObservabilityView'
 import { MeView } from './MeView'
+import { SettingsView } from '@/components/SettingsView'
 import { EmailComposer } from '@/components/EmailComposer'
 import { useT } from '@/lib/i18n'
 
@@ -110,6 +111,7 @@ export function DesktopApp() {
         {view === 'shipping' && <Suspense fallback={<div className="h-full grid place-items-center text-sm text-ink-400">{t('desktop.openingShip')}</div>}><ShippingView /></Suspense>}
         {view === 'observability' && devtoolsEnabled && <ObservabilityView />}
         {view === 'me' && <MeView />}
+        {view === 'settings' && <SettingsView />}
       </div>
       {/* Email composer drawer — globally rendered so opening it works
           from any view (sidebar Compose CTA, EmailCard reply button). */}

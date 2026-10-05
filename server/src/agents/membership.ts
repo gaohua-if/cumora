@@ -43,6 +43,7 @@ async function withActiveParticipantLocks<T>(args: {
   const participantIds = [...new Set(args.participantIds)].sort()
   try {
     await client.query('BEGIN')
+    await client.query('SELECT pg_advisory_xact_lock(hashtextextended($1,1))', [`task:${args.companyId}`])
     const { rows } = await client.query<{ id: string }>(
       `SELECT id
          FROM participants
@@ -201,6 +202,8 @@ export async function addConversationMember(args: {
         [args.conversationId, args.memberId, args.companyId],
       )
       if (!inserted.rowCount) return null
+      const { TaskService } = await import('../tasks/service.js')
+      await new TaskService(pool).checkMembershipHistory(client, args.companyId, args.conversationId, args.memberId)
       const members = await refreshMembersProjection(client, args.conversationId)
       return insertMembershipSystemMessage({
         client,

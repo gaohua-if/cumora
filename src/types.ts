@@ -247,6 +247,8 @@ export interface QuotedSummary {
 }
 
 export interface Message {
+  taskReference?: string
+  taskDelivery?: {taskId:string;deliveryId:string;artifactVersionIds:string[];evidenceVersionIds:string[];limitations:string[]}
   id: string
   conversationId: string
   authorId: string
@@ -313,7 +315,7 @@ export interface Message {
 }
 
 export interface ViewKey {
-  view: 'conversations' | 'whispers' | 'convene' | 'agents' | 'boards' | 'calendar' | 'documents' | 'shipping' | 'observability' | 'me' | 'library'
+  view: 'conversations' | 'whispers' | 'convene' | 'agents' | 'boards' | 'calendar' | 'documents' | 'shipping' | 'observability' | 'me' | 'library' | 'settings'
 }
 
 /* ============== Calendar (AI-native shared schedule) ============== */

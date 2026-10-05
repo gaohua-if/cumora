@@ -20,6 +20,7 @@
  */
 
 import { execFile, spawn } from 'node:child_process'
+import { runLocalTask } from '../../tasks/local-client.js'
 import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, constants as FS_CONSTANTS, type FSWatcher, watch } from 'node:fs'
 import { chmod, copyFile, lstat, mkdir, open, readdir, readFile, rename, rm, stat, truncate, writeFile } from 'node:fs/promises'
@@ -1937,6 +1938,14 @@ export class AgentRunner {
   }
 
   async start(): Promise<void> {
+    const startupToken = await this.ensureToken()
+    const protectedTaskMode = await runtimeGet<boolean>(this.cfg.serverUrl, '/task-mode', startupToken)
+    if (protectedTaskMode === null) throw new Error('task mode authorization unavailable')
+    if (protectedTaskMode) {
+      this.pollTimer = setInterval(() => { if (!this.busy && !this.stopped) this.scheduleWake('task-poll') }, INBOX_POLL_MS)
+      this.scheduleWake('task-start')
+      return
+    }
     await this.adapter.seedHome(this.home, { id: this.agent.id, name: this.agent.name, role: this.agent.role, systemPrompt: this.agent.systemPrompt })
     if (allowUnsandboxedByoa()) await writeShim(this.binDir)
     await writeShim(this.trustedCliDir)
@@ -2856,6 +2865,14 @@ export class AgentRunner {
     try {
       do {
         this.pendingRerun = false
+        const taskModeToken = await this.ensureToken()
+        const taskMode = await runtimeGet<boolean>(this.cfg.serverUrl, '/task-mode', taskModeToken)
+        if (taskMode === null) break
+        if (taskMode) {
+          if (this.engineSession) await this.resetEngineSession('task-mode-cutover')
+          await runLocalTask({ serverUrl: this.cfg.serverUrl, token: taskModeToken, engine: this.engine, signal: this.teardown.signal })
+          break
+        }
         // Triage-trouble backoff: while triage is cooling down (after a rate-limit
         // or a fail-open), skip the WHOLE turn — no triage call, no engine spawn —
         // so we neither hammer a broken/throttled triage nor burn the big brain.

@@ -1,3 +1,4 @@
+import { TaskArtifactLinks } from './TaskArtifactLinks'
 import { createContext, memo, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import hljs from 'highlight.js/lib/common'
@@ -1788,6 +1789,7 @@ function MessageRowImpl({ msg, author, delay = 0, animate = true }: MessageRowPr
         </div>
       )}
       {msg.attachment && <AttachmentCard msg={msg} />}
+      {msg.taskDelivery && <TaskArtifactLinks delivery={msg.taskDelivery} />}
     </>
   )
 

@@ -26,6 +26,11 @@ const { governanceMembershipHistoryChecksum } = await import('../db/migrations/0
 const { engineDefaultsChecksum } = await import('../db/migrations/0012-engine-defaults.js')
 const { agentProviderProfileChecksum } = await import('../db/migrations/0013-agent-provider-profile.js')
 const { agentRoutingClaimsChecksum } = await import('../db/migrations/0014-agent-routing-claims.js')
+const { channelTaskExecutionChecksum } = await import('../db/migrations/0015-channel-task-execution.js')
+const { taskExecutorFencesChecksum } = await import('../db/migrations/0016-task-executor-fences.js')
+const { taskLifecycleChecksum } = await import('../db/migrations/0018-task-lifecycle.js')
+const { taskDefinitionSnapshotsChecksum } = await import('../db/migrations/0019-task-definition-snapshots.js')
+const { taskSourceAndGovernanceLinksChecksum } = await import('../db/migrations/0017-task-source-and-governance-links.js')
 const { verifySchemaCompatibility } = await import('../db/schema-version.js')
 type SchemaVersionQueryable = import('../db/schema-version.js').SchemaVersionQueryable
 
@@ -85,6 +90,15 @@ test('the agent provider profile migration matches its immutable manifest checks
 
 test('the agent routing claims migration matches its immutable manifest checksum', () => {
   assert.equal(agentRoutingClaimsChecksum(), SCHEMA_MIGRATIONS[13].checksum)
+})
+
+test('channel task migration matches its checksum and preparation accepts schema 14', () => {
+  assert.equal(channelTaskExecutionChecksum(), SCHEMA_MIGRATIONS[14].checksum)
+  assert.equal(taskExecutorFencesChecksum(), SCHEMA_MIGRATIONS[15].checksum)
+  assert.equal(taskSourceAndGovernanceLinksChecksum(), SCHEMA_MIGRATIONS[16].checksum)
+  assert.equal(taskLifecycleChecksum(), SCHEMA_MIGRATIONS[17].checksum)
+  assert.equal(taskDefinitionSnapshotsChecksum(), SCHEMA_MIGRATIONS[18].checksum)
+  assert.equal(validateMigrationHistory(current().slice(0, 14)).currentVersion, 14)
 })
 
 test('the migration owner accepts an exact prefix and reports its pending suffix', () => {

@@ -21,6 +21,11 @@
  * Pod via the orchestrator.
  */
 import { pool } from '../db/pool.js'
+import { taskService, agentTaskMode,taskMessageIds } from '../tasks/legacy-guard.js'
+import { TaskIngressService } from '../tasks/ingress.js'
+import { TaskError } from '../tasks/contracts.js'
+import { drainCloudTasks } from '../tasks/runner.js'
+import { TaskPlanService } from '../tasks/plans.js'
 import { env } from '../env.js'
 import { CH_MESSAGE_NEW, CH_POLLS, CH_TYPING, publish, redis, sub, type MessageNewEvent, type PollUpdatedEvent } from '../redis.js'
 import { notifyAlert } from '../alerting.js'
@@ -217,6 +222,12 @@ export async function wakeAgent(
   steerPayload: SteerWakePayload | null = null,
   options: WakeOptions = {},
 ): Promise<boolean> {
+  if (await agentTaskMode(agentId)) {
+    const host = await pool.query<{ company_id: string }>(`SELECT company_id FROM participants WHERE id=$1 AND kind='agent' AND departed_at IS NULL`, [agentId])
+    if (!host.rows[0]) return false
+    return new TaskIngressService(taskService).synthetic(host.rows[0].company_id, agentId, reason, conversationId,
+      options.backgroundBrief?.body ?? options.idleReason ?? options.pollBrief?.question ?? '')
+  }
   return wakeOne(agentId, reason, conversationId, steerPayload, options)
 }
 
@@ -338,6 +349,7 @@ async function wakeOne(
   options: WakeOptions = {},
   retryAttempt: number = 0,
 ): Promise<boolean> {
+  if(await agentTaskMode(agentId)) return wakeAgent(agentId,reason,conversationId,steerPayload,options)
   // Synthetic wakes can be dropped under load — the next idle tick
   // or next scanner pass will re-evaluate. Real wakes never are.
   if ((reason === 'idle' || reason === 'background_scan') && !_consumeLowPriorityWakeBudget()) {
@@ -572,7 +584,12 @@ async function wakeOne(
  *
  *  Fix: SETNX a key per message id; only the first replica that
  *  claims it proceeds. TTL=60s reaps the key automatically. */
-async function claimAndWake(payload: MessageNewEvent): Promise<void> {
+export async function claimAndWake(payload: MessageNewEvent): Promise<void> {
+  if (payload.companyId && await taskService.protectsLegacy(payload.companyId)) {
+    await new TaskIngressService(taskService).scheduleMessage(payload.companyId, payload.message.id)
+    return
+  }
+  if(payload.taskId || payload.taskDelivery || (await taskMessageIds([payload.message.id])).has(payload.message.id))return
   const key = `cumora:wake-claim:${payload.message.id}`
   const claimed = await redis.set(key, '1', 'EX', 60, 'NX').catch(() => null)
   if (claimed === null) return     // another replica owns this wake
@@ -1034,6 +1051,29 @@ let started = false
 export function startScheduler(): void {
   if (started) return
   started = true
+  let taskTickRunning = false
+  const taskTimer = setInterval(() => {
+    if (taskTickRunning) return
+    taskTickRunning = true
+    void (async () => {
+      // Message/task rows are authoritative, so reconnects and Redis outages recover without message fan-out.
+      const work = await pool.query<{ company_id: string; message_id: string }>(`SELECT l.company_id,l.message_id FROM task_message_links l
+        JOIN channel_tasks t ON t.id=l.task_id AND t.company_id=l.company_id JOIN task_workspace_settings s ON s.company_id=l.company_id
+        WHERE s.mode='TASK' AND l.purpose IN('TRIGGER','SUPPLEMENT') AND t.status IN('OPEN','BLOCKED') AND NOT EXISTS(
+          SELECT 1 FROM task_dispatches d WHERE d.company_id=l.company_id AND d.dispatch_key=l.task_id||':message:'||l.message_id) ORDER BY l.message_id LIMIT 32`)
+      for (const row of work.rows) await new TaskIngressService(taskService).scheduleMessage(row.company_id, row.message_id)
+      const plans = await pool.query<{ company_id: string; task_id: string }>(`SELECT p.company_id,p.task_id FROM task_plan_versions p JOIN channel_tasks t ON t.id=p.task_id
+        JOIN task_workspace_settings s ON s.company_id=p.company_id WHERE s.mode='TASK' AND t.status IN('OPEN','BLOCKED') LIMIT 16`)
+      for (const plan of plans.rows) {
+        try { await new TaskPlanService(taskService).advance(plan.company_id, plan.task_id) }
+        catch(error){if(!(error instanceof TaskError))throw error}
+      }
+      await drainCloudTasks(taskService)
+    })().catch((error) => {
+      if ((error as { code?: string }).code !== '42P01') console.error('[scheduler] task reconciliation failed', error)
+    }).finally(() => { taskTickRunning = false })
+  }, 2_000)
+  taskTimer.unref()
   void sub.subscribe(CH_MESSAGE_NEW, (err) => {
     if (err) console.error('[scheduler] subscribe failed', err)
   })

@@ -60,6 +60,11 @@ import {
 import { ENGINE_DEFAULTS_SQL, engineDefaultsChecksum } from './migrations/0012-engine-defaults.js'
 import { AGENT_PROVIDER_PROFILE_SQL, agentProviderProfileChecksum } from './migrations/0013-agent-provider-profile.js'
 import { AGENT_ROUTING_CLAIMS_SQL, agentRoutingClaimsChecksum } from './migrations/0014-agent-routing-claims.js'
+import { CHANNEL_TASK_EXECUTION_SQL, channelTaskExecutionChecksum } from './migrations/0015-channel-task-execution.js'
+import { TASK_EXECUTOR_FENCES_SQL, taskExecutorFencesChecksum } from './migrations/0016-task-executor-fences.js'
+import { TASK_LIFECYCLE_SQL, taskLifecycleChecksum } from './migrations/0018-task-lifecycle.js'
+import { TASK_DEFINITION_SNAPSHOTS_SQL, taskDefinitionSnapshotsChecksum } from './migrations/0019-task-definition-snapshots.js'
+import { TASK_SOURCE_AND_GOVERNANCE_LINKS_SQL, taskSourceAndGovernanceLinksChecksum } from './migrations/0017-task-source-and-governance-links.js'
 
 /** Frozen data backfill embedded in migration 0001. Exported so its behavior
  * can be exercised against PostgreSQL without replaying the whole migration. */
@@ -2680,6 +2685,20 @@ const VERSIONED_MIGRATIONS: readonly VersionedMigration[] = [
     transactional: true,
     up: applyAgentRoutingClaims,
   },
+  {
+    ...SCHEMA_MIGRATIONS[14],
+    sourceChecksum: channelTaskExecutionChecksum(),
+    transactional: true,
+    up: async (client) => { await client.query(CHANNEL_TASK_EXECUTION_SQL) },
+  },
+  { ...SCHEMA_MIGRATIONS[15], sourceChecksum: taskExecutorFencesChecksum(), transactional: true,
+    up: async (client) => { await client.query(TASK_EXECUTOR_FENCES_SQL) } },
+  { ...SCHEMA_MIGRATIONS[16], sourceChecksum: taskSourceAndGovernanceLinksChecksum(), transactional: true,
+    up: async (client) => { await client.query(TASK_SOURCE_AND_GOVERNANCE_LINKS_SQL) } },
+  { ...SCHEMA_MIGRATIONS[17], sourceChecksum: taskLifecycleChecksum(), transactional: true,
+    up: async(client) => { await client.query(TASK_LIFECYCLE_SQL) } },
+  { ...SCHEMA_MIGRATIONS[18], sourceChecksum: taskDefinitionSnapshotsChecksum(), transactional: true,
+    up: async(client) => { await client.query(TASK_DEFINITION_SNAPSHOTS_SQL) } },
 ]
 
 export async function applyPendingMigration(

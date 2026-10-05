@@ -1,3 +1,4 @@
+import { useTaskSelection } from '@/stores/tasks'
 import { create } from 'zustand'
 import type { Message, ReactionEntry } from '@/types'
 import { applyReplyCountDelta } from '@/lib/replyCount'
@@ -270,7 +271,8 @@ function fromApi(m: ApiMessage): Message {
     at,
     reactions: deriveMineForReactions(m.reactions),
     tool: raw.tool ?? undefined,
-    attachment: raw.attachment ?? undefined,
+    attachment: raw.attachment && !('taskId' in raw.attachment) ? raw.attachment : undefined,
+    taskDelivery: raw.attachment && 'taskId' in raw.attachment ? raw.attachment as unknown as Message['taskDelivery'] : m.taskDelivery,
     whisperLink: raw.whisperLink ?? undefined,
     quotedMessageId: raw.quotedMessageId ?? undefined,
     quoted: raw.quoted ?? undefined,
@@ -632,6 +634,7 @@ export async function sendUserMessage(
   attachment?: import('@/api/client').ApiAttachment | null,
   quotedMessageId?: string | null,
   clientId = newTempId(),
+  taskReference = useTaskSelection.getState().references[convoId],
 ): Promise<void> {
   const v = body.trim()
   if (!v && !attachment) return
@@ -639,7 +642,7 @@ export async function sendUserMessage(
   // Without a signed-in user we can't paint an optimistic bubble (no authorId
   // to attribute it to). Fall back to the old fire-and-forget path.
   if (!meId) {
-    try { await api.sendMessage(convoId, v, attachment ?? null, quotedMessageId ?? null) }
+    try { await api.sendMessage(convoId, v, attachment ?? null, quotedMessageId ?? null, clientId, taskReference) }
     catch (err) { console.warn('[messages] send failed', err) }
     return
   }
@@ -668,6 +671,7 @@ export async function sendUserMessage(
   const optimistic: Message = {
     id: tempId,
     clientId: tempId,
+    taskReference,
     conversationId: convoId,
     authorId: meId,
     kind: 'text',
@@ -709,7 +713,7 @@ export async function sendUserMessage(
   }))
 
   try {
-    const { id: realId } = await api.sendMessage(convoId, v, attachment ?? null, quotedMessageId ?? null, clientId)
+    const { id: realId } = await api.sendMessage(convoId, v, attachment ?? null, quotedMessageId ?? null, clientId, taskReference)
     // Reconcile the temp bubble with the server. Either the WS `message.new`
     // already raced ahead of us (real id already in the list → drop the temp)
     // or it hasn't (rename temp → real id so the eventual WS event dedupes
@@ -778,7 +782,7 @@ export async function retryFailedMessage(convoId: string, tempId: string): Promi
   const quotedId = msg.quotedMessageId ?? null
   const clientId = msg.clientId ?? tempId
   discardFailedMessage(convoId, tempId)
-  await sendUserMessage(convoId, body, retryAttachment, quotedId, clientId)
+  await sendUserMessage(convoId, body, retryAttachment, quotedId, clientId, msg.taskReference || useTaskSelection.getState().references[convoId])
 }
 
 export async function toggleReaction(messageId: string, emoji: string): Promise<void> {

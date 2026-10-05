@@ -1,0 +1,923 @@
+{
+  "createdAt": "2026-10-04T12:22:21.106Z",
+  "status": "has_findings",
+  "artifact": "docs/prototypes/configuration-workbench-v1.html",
+  "reviewMethod": "Real Chrome/CDP UI reproduction; isolated prototype storage; no source or production changes",
+  "findings": [
+    {
+      "id": "R1",
+      "priority": "P1",
+      "line": 158,
+      "summary": "Removing last selected member bundle turns subset into all"
+    },
+    {
+      "id": "R2",
+      "priority": "P1",
+      "line": 149,
+      "summary": "Discarding newly created object leaves stale selection and form"
+    },
+    {
+      "id": "R3",
+      "priority": "P2",
+      "line": 112,
+      "summary": "Bundle picker shows latest version while confirmation retains old reference"
+    },
+    {
+      "id": "R4",
+      "priority": "P2",
+      "line": 140,
+      "summary": "Nested Skill import drops member context and pending choices"
+    },
+    {
+      "id": "R5",
+      "priority": "P2",
+      "line": 104,
+      "summary": "Language circular inheritance remains unresolved"
+    },
+    {
+      "id": "R6",
+      "priority": "P2",
+      "line": 104,
+      "summary": "Effective resource preview omits per-resource identity/actions/scope"
+    },
+    {
+      "id": "R7",
+      "priority": "P2",
+      "line": 15,
+      "summary": "320px/360px navigation extends past viewport and clips entry"
+    }
+  ],
+  "browserBatches": [
+    {
+      "batch": 1,
+      "events": [
+        {
+          "op": "navigate",
+          "url": "http://127.0.0.1:5182/configuration-workbench-v1.html?review=scope#channels/product/access"
+        },
+        {
+          "op": "wait",
+          "expression": "document.querySelector('#content h1')?.textContent==='产品研发'"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=binding-access][data-id=bram]"
+        },
+        {
+          "op": "click",
+          "selector": "#access-all"
+        },
+        {
+          "op": "click",
+          "selector": "#access-subset input[value=engineering]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=modal-submit]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=save]"
+        },
+        {
+          "op": "eval",
+          "expression": "({before:current().bindings.bram.bundles,groupBundles:current().bundles.map(b=>b.id)})"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=detach-bundle][data-id=engineering]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=preview-channel]"
+        },
+        {
+          "op": "fill",
+          "selector": "#preview-agent",
+          "value": "bram"
+        },
+        {
+          "op": "eval",
+          "expression": "({after:current().bindings.bram.bundles,remainingGroupBundles:current().bundles.map(b=>b.id),nowResearchAvailable:document.querySelector('.drawer').textContent.includes('团队知识库'),showsAll:document.querySelector('#tab-content').textContent.includes('群聊全部资源包')})"
+        },
+        {
+          "op": "screenshot",
+          "path": "docs/prototypes/configuration-workbench-v1/review-findings/01-subset-becomes-all.png"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=close-modal]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=discard]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=nav][data-id=agents]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=create]"
+        },
+        {
+          "op": "fill",
+          "selector": "#new-name",
+          "value": "待撤销的 Agent"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=modal-submit]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=discard]"
+        },
+        {
+          "op": "eval",
+          "expression": "({selected,selectedRecordExists:!!current(),detailTitle:document.querySelector('#content h1').textContent,saveDisabled:document.querySelector('#save').disabled})"
+        },
+        {
+          "op": "fill",
+          "selector": "#f-name",
+          "value": "仍能编辑的已撤销对象"
+        },
+        {
+          "op": "errors"
+        },
+        {
+          "op": "screenshot",
+          "path": "docs/prototypes/configuration-workbench-v1/review-findings/02-discarded-object-stale.png"
+        },
+        {
+          "ok": true,
+          "op": "navigate",
+          "result": {
+            "frameId": "BA256D13FB8A6BFE7FFAB5F391ACB83C",
+            "loaderId": "6EC6D04264CA953D23220C7BF878F421",
+            "isDownload": false
+          }
+        },
+        {
+          "ok": true,
+          "op": "wait",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "eval",
+          "result": {
+            "before": [
+              "engineering"
+            ],
+            "groupBundles": [
+              "engineering",
+              "research-bundle"
+            ]
+          }
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "fill",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "eval",
+          "result": {
+            "after": [],
+            "remainingGroupBundles": [
+              "research-bundle"
+            ],
+            "nowResearchAvailable": true,
+            "showsAll": true
+          }
+        },
+        {
+          "ok": true,
+          "op": "screenshot",
+          "result": {
+            "path": "docs/prototypes/configuration-workbench-v1/review-findings/01-subset-becomes-all.png"
+          }
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "fill",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "eval",
+          "result": {
+            "selected": "prototype-mutsdaz5",
+            "selectedRecordExists": false,
+            "detailTitle": "待撤销的 Agent",
+            "saveDisabled": true
+          }
+        },
+        {
+          "ok": true,
+          "op": "fill",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "errors",
+          "result": {
+            "errors": [
+              "Uncaught TypeError: Cannot set properties of undefined (setting 'name')\n    at HTMLDocument.<anonymous> (http://127.0.0.1:5182/configuration-workbench-v1.html?review=scope:177:164)\n    at <anonymous>:1:316\n    at <anonymous>:1:409"
+            ],
+            "network": []
+          }
+        },
+        {
+          "ok": true,
+          "op": "screenshot",
+          "result": {
+            "path": "docs/prototypes/configuration-workbench-v1/review-findings/02-discarded-object-stale.png"
+          }
+        }
+      ]
+    },
+    {
+      "batch": 2,
+      "events": [
+        {
+          "op": "click",
+          "selector": "[data-action=reset]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=confirm-reset]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=nav][data-id=channels]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=select][data-id=product]"
+        },
+        {
+          "op": "fill",
+          "selector": "#f-language",
+          "value": "跟随 Agent"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=save]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=preview-channel]"
+        },
+        {
+          "op": "fill",
+          "selector": "#preview-agent",
+          "value": "bram"
+        },
+        {
+          "op": "eval",
+          "expression": "({channelLanguage:current().language,agentLanguage:getAgent('bram').language,previewLanguageSection:[...document.querySelectorAll('.drawer .section')].find(e=>e.textContent.includes('普通设置')).innerText})"
+        },
+        {
+          "op": "screenshot",
+          "path": "docs/prototypes/configuration-workbench-v1/review-findings/03-inheritance-not-resolved.png"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=close-modal]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=nav][data-id=bundles]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=tab][data-id=instructions]"
+        },
+        {
+          "op": "fill",
+          "selector": "#f-instructions",
+          "value": "资源包第三版的新要求。"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=save]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=nav][data-id=channels]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=select][data-id=product]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=tab][data-id=access]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=choose-bundles]"
+        },
+        {
+          "op": "eval",
+          "expression": "({pickerLabel:document.querySelector('.modal-body input[value=engineering]').closest('label').innerText,actuallyReferencedVersion:current().bundles.find(r=>r.id==='engineering').version})"
+        },
+        {
+          "op": "screenshot",
+          "path": "docs/prototypes/configuration-workbench-v1/review-findings/04-bundle-picker-wrong-version.png"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=modal-submit]"
+        },
+        {
+          "op": "eval",
+          "expression": "({versionAfterConfirmingV3Label:current().bundles.find(r=>r.id==='engineering').version,latestVersion:getBundle('engineering').version})"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=tab][data-id=members]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=binding-skills][data-id=bram]"
+        },
+        {
+          "op": "click",
+          "selector": ".modal-body input[value=writing]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=import-skill]"
+        },
+        {
+          "op": "fill",
+          "selector": "#import-name",
+          "value": "发布验证"
+        },
+        {
+          "op": "fill",
+          "selector": "#import-body",
+          "value": "# 发布验证\n检查本次发布的交付内容。"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=modal-submit]"
+        },
+        {
+          "op": "eval",
+          "expression": "(()=>{const s=data.skills.find(s=>s.name==='发布验证');const b=current().bindings.bram;return {skillCreated:!!s,importedSkillAssignedToBram:(b.skills||[]).includes(s.id)||getAgent('bram').skills.includes(s.id),pendingWritingSelectionPreserved:(b.skills||[]).includes('writing'),bindingSkills:b.skills}})()"
+        },
+        {
+          "op": "screenshot",
+          "path": "docs/prototypes/configuration-workbench-v1/review-findings/05-import-loses-member-selection.png"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=save]"
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "fill",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "fill",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "eval",
+          "result": {
+            "channelLanguage": "跟随 Agent",
+            "agentLanguage": "继承群聊",
+            "previewLanguageSection": "普通设置\n\n成员显式设置 → 群聊默认 → Agent 默认。\n\n语言 / 输出结构\n\n继承群聊 · 结论 + 改动 + 验证\n\n模型 / 执行位置\n\n跟随引擎默认 · gh · 本地计算机\n\n记忆 / 协作\n\n仅当前群聊 · 最多 3 位 Agent 并行"
+          }
+        },
+        {
+          "ok": true,
+          "op": "screenshot",
+          "result": {
+            "path": "docs/prototypes/configuration-workbench-v1/review-findings/03-inheritance-not-resolved.png"
+          }
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "fill",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "eval",
+          "result": {
+            "pickerLabel": "工程开发 v3\n\n研发群聊常用的工具、资料与代码仓库访问。\n\n2 MCP · 2 域名 · 1 仓库",
+            "actuallyReferencedVersion": 2
+          }
+        },
+        {
+          "ok": true,
+          "op": "screenshot",
+          "result": {
+            "path": "docs/prototypes/configuration-workbench-v1/review-findings/04-bundle-picker-wrong-version.png"
+          }
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "eval",
+          "result": {
+            "versionAfterConfirmingV3Label": 2,
+            "latestVersion": 3
+          }
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "fill",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "fill",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "eval",
+          "result": {
+            "skillCreated": true,
+            "importedSkillAssignedToBram": false,
+            "pendingWritingSelectionPreserved": false,
+            "bindingSkills": []
+          }
+        },
+        {
+          "ok": true,
+          "op": "screenshot",
+          "result": {
+            "path": "docs/prototypes/configuration-workbench-v1/review-findings/05-import-loses-member-selection.png"
+          }
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        }
+      ]
+    },
+    {
+      "batch": 3,
+      "events": [
+        {
+          "op": "click",
+          "selector": "[data-action=nav][data-id=bundles]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=tab][data-id=overview]"
+        },
+        {
+          "op": "fill",
+          "selector": "#f-identity",
+          "value": "专用项目账号"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=save]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=nav][data-id=channels]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=select][data-id=product]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=tab][data-id=access]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=upgrade-bundle][data-id=engineering]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=modal-submit]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=save]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=preview-channel]"
+        },
+        {
+          "op": "eval",
+          "expression": "(()=>{const b=bundleAt(current().bundles.find(r=>r.id==='engineering'));const t=[...document.querySelectorAll('.drawer .section')].find(e=>e.textContent.includes('访问资源'));return {bundleIdentity:b.identity,mcpIdentities:b.mcp.map(r=>r.identity),githubIdentity:b.github[0].identity,previewResources:t.innerText,repoActionsMissing:!t.textContent.includes('创建 PR'),repoBranchMissing:!t.textContent.includes('main'),actualGitHubIdentityMissing:!t.textContent.includes('Cumora GitHub App')}})()"
+        },
+        {
+          "op": "screenshot",
+          "path": "docs/prototypes/configuration-workbench-v1/review-findings/06-preview-missing-resource-scope.png"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=close-modal]"
+        },
+        {
+          "op": "viewport",
+          "width": 360,
+          "height": 800,
+          "mobile": true
+        },
+        {
+          "op": "eval",
+          "expression": "({viewport:innerWidth,documentWidth:document.documentElement.scrollWidth,navRight:document.querySelector('#nav').getBoundingClientRect().right,overflowing:[...document.querySelectorAll('body *')].filter(e=>e.getBoundingClientRect().right>innerWidth+1 && getComputedStyle(e).position!=='fixed').slice(0,6).map(e=>({tag:e.tagName,class:e.className,right:e.getBoundingClientRect().right}))})"
+        },
+        {
+          "op": "viewport",
+          "width": 320,
+          "height": 740,
+          "mobile": true
+        },
+        {
+          "op": "eval",
+          "expression": "({viewport:innerWidth,documentWidth:document.documentElement.scrollWidth,navRight:document.querySelector('#nav').getBoundingClientRect().right})"
+        },
+        {
+          "op": "screenshot",
+          "path": "docs/prototypes/configuration-workbench-v1/review-findings/07-mobile-320-overflow.png"
+        },
+        {
+          "op": "viewport",
+          "width": 390,
+          "height": 844,
+          "mobile": true
+        },
+        {
+          "op": "eval",
+          "expression": "({viewport:innerWidth,documentWidth:document.documentElement.scrollWidth})"
+        },
+        {
+          "op": "viewport",
+          "width": 1440,
+          "height": 1000,
+          "mobile": false
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=reset]"
+        },
+        {
+          "op": "click",
+          "selector": "[data-action=confirm-reset]"
+        },
+        {
+          "op": "close"
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "fill",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "eval",
+          "result": {
+            "bundleIdentity": "专用项目账号",
+            "mcpIdentities": [
+              "Cumora 服务账号",
+              "Cumora 服务账号"
+            ],
+            "githubIdentity": "Cumora GitHub App",
+            "previewResources": "访问资源\n\n来自当前群聊选择的资源包。\n\n工程开发 v4\n专用项目账号\nNotion · Linear · docs.cumora.ai · nodejs.org · gaohua-if/cumora\n资料研究 v1\nCumora 服务账号\n团队知识库 · developer.mozilla.org",
+            "repoActionsMissing": true,
+            "repoBranchMissing": true,
+            "actualGitHubIdentityMissing": true
+          }
+        },
+        {
+          "ok": true,
+          "op": "screenshot",
+          "result": {
+            "path": "docs/prototypes/configuration-workbench-v1/review-findings/06-preview-missing-resource-scope.png"
+          }
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "viewport",
+          "result": {}
+        },
+        {
+          "ok": true,
+          "op": "eval",
+          "result": {
+            "viewport": 360,
+            "documentWidth": 360,
+            "navRight": 361.21875,
+            "overflowing": [
+              {
+                "tag": "NAV",
+                "class": "navgroup",
+                "right": 361.21875
+              },
+              {
+                "tag": "BUTTON",
+                "class": "nav ",
+                "right": 361.21875
+              }
+            ]
+          }
+        },
+        {
+          "ok": true,
+          "op": "viewport",
+          "result": {}
+        },
+        {
+          "ok": true,
+          "op": "eval",
+          "result": {
+            "viewport": 320,
+            "documentWidth": 320,
+            "navRight": 361.21875
+          }
+        },
+        {
+          "ok": true,
+          "op": "screenshot",
+          "result": {
+            "path": "docs/prototypes/configuration-workbench-v1/review-findings/07-mobile-320-overflow.png"
+          }
+        },
+        {
+          "ok": true,
+          "op": "viewport",
+          "result": {}
+        },
+        {
+          "ok": true,
+          "op": "eval",
+          "result": {
+            "viewport": 390,
+            "documentWidth": 390
+          }
+        },
+        {
+          "ok": true,
+          "op": "viewport",
+          "result": {}
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true,
+          "op": "click",
+          "result": true
+        },
+        {
+          "ok": true
+        }
+      ]
+    }
+  ],
+  "browserClosed": true,
+  "prototypeReviewProfileReset": true,
+  "artifactSha256": "339e87793c5f98f515b8700c33919ddaf6c7ffda9e753d142b9e7c5fb2bbae81",
+  "reportSha256": "041f49d65e2a7ebb222f9d33db9627402487f542575a731e1218ee88d9e341fd",
+  "screenshotSha256": {
+    "docs/prototypes/configuration-workbench-v1/review-findings/01-subset-becomes-all.png": "b397eadbfe07d1b6a0e5aa1c9f3f99f8ae3eacb0f4ae14f78f44a50bb92fa24e",
+    "docs/prototypes/configuration-workbench-v1/review-findings/02-discarded-object-stale.png": "98c1480db64756f5a17770bfdc5e24ceb2bb44b136fac27eac45441d7cdf6d97",
+    "docs/prototypes/configuration-workbench-v1/review-findings/03-inheritance-not-resolved.png": "a2f169f7f3ec3bf38b3cee0e4e4644524d4b9f1993f85e705d968c3cd136b5b5",
+    "docs/prototypes/configuration-workbench-v1/review-findings/04-bundle-picker-wrong-version.png": "031fee5bf7dfd0f1814d7dc2fadf213819443379b7fb27ec6cb491dc3530e363",
+    "docs/prototypes/configuration-workbench-v1/review-findings/05-import-loses-member-selection.png": "778ea80cd46cef913984edaae0d3872d83da3ca838daf20f55c19d76422c5e48",
+    "docs/prototypes/configuration-workbench-v1/review-findings/06-preview-missing-resource-scope.png": "fe08e65bf9aae82e801395285a56dafa784697f1d2e32242fbccec1100d8e960",
+    "docs/prototypes/configuration-workbench-v1/review-findings/07-mobile-320-overflow.png": "7fcff387060901dffcb1aed68b2a1e264b9b836c3e7e2c13ee21b11199197702"
+  }
+}

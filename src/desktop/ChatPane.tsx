@@ -1,3 +1,4 @@
+import { TaskContextPanel } from '@/components/TaskContextPanel'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso'
 import { useApp } from '@/stores/app'
@@ -1010,6 +1011,7 @@ export function Composer({
       // thread's background ends and a different composer-bg begins.
       onDragOver={(e) => { e.preventDefault() }}
       onDrop={onDrop}>
+      {!isThread && <TaskContextPanel channelId={convoId} />}
       {!isThread && (
         <div className="px-1 pb-1">
           <TypingRow names={typingNames} />

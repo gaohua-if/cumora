@@ -1,3 +1,5 @@
+import { TaskExecutionService } from './tasks/execution.js'
+import { taskService } from './tasks/legacy-guard.js'
 import { WebSocketServer, type WebSocket } from 'ws'
 import type { Server } from 'node:http'
 import {
@@ -188,7 +190,7 @@ interface RoutedRedisEvent {
   type?: string
   companyId?: string
   conversationId?: string
-  message?: { id?: string }
+  message?: { id?: string;quotedMessageId?:string;quoted?:unknown }
   mentionedIds?: string[]
   recipientUserIds?: string[]
 }
@@ -258,6 +260,8 @@ export async function resolveWsEventRecipientUserIds(
   const durableMessageId = event.type === 'message.new' && typeof event.message?.id === 'string'
     ? event.message.id
     : null
+  if(durableMessageId && !(await new TaskExecutionService(taskService).deliveryVisible(companyId,durableMessageId))) return new Set()
+  if(event.type==='message.new' && event.message?.quotedMessageId && !(await new TaskExecutionService(taskService).deliveryVisible(companyId,event.message.quotedMessageId)))event.message.quoted=undefined
   const { rows } = await pool.query<{ user_id: string }>(
     `WITH scoped_conversation AS (
        SELECT id, company_id
@@ -1061,6 +1065,11 @@ async function postDocMentionWake(args: {
   documentId: string
 }): Promise<void> {
   const { companyId, mentionerId, agentId, documentId } = args
+  if(await taskService.protectsLegacy(companyId)){
+    const {TaskIngressService}=await import('./tasks/ingress.js')
+    await new TaskIngressService(taskService).rejected(companyId,mentionerId,'ingress:doc.mention','TASK_DOCUMENT_INPUT_REQUIRED',{agentId,documentId})
+    return
+  }
   const participantIds = [mentionerId, agentId].sort()
   let conversationId = ''
   let documentTitle = 'Untitled'
@@ -1397,6 +1406,7 @@ export function attachWebSocket(httpServer: Server) {
     const previous = redisFanoutQueues.get(routeKey) ?? Promise.resolve()
     const current = previous.catch(() => {}).then(async () => {
       const recipients = await resolveWsEventRecipientUserIds(event)
+      const authorizedPayload=JSON.stringify(event)
       for (const c of clients) {
         if (!recipients.has(c.userId)) continue
         if (c.ws.readyState !== c.ws.OPEN) continue
@@ -1413,7 +1423,7 @@ export function attachWebSocket(httpServer: Server) {
           continue
         }
         if (buffered > WS_MAX_BUFFERED_BYTES) continue // skip frame; let it drain
-        try { c.ws.send(payload) } catch { /* ignore */ }
+        try { c.ws.send(authorizedPayload) } catch { /* ignore */ }
       }
     })
     redisFanoutQueues.set(routeKey, current)

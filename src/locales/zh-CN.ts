@@ -62,6 +62,7 @@ export const zhCN: Partial<Record<keyof typeof en, string>> = {
   'nav.library': '资料库',
   'nav.agents': '智能体',
   'nav.me': '我',
+  'nav.settings': '配置',
   'nav.observe': '观测',
   // ─── 登录 ─────────────────────────────────────────────────────────
   'auth.welcome': '欢迎来到 cumora',

@@ -58,6 +58,7 @@ export interface HttpClientOptions {
 }
 
 export class HttpRuntimeClient implements AgentRuntimeClient {
+  async taskMode(_agentId: string): Promise<boolean> { return this.call<boolean>('GET', '/task-mode') }
   private readonly baseUrl: string
   private readonly token: string
   private readonly fetchImpl: typeof fetch

@@ -1,3 +1,4 @@
+import { TaskContextPanel } from '@/components/TaskContextPanel'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso'
 import { Pressable } from './Pressable'
@@ -772,6 +773,7 @@ export function MobileChat() {
           className="hidden"
           onChange={onPickFile}
         />
+        {convoId && <TaskContextPanel channelId={convoId} />}
         {/* Two-row composer: textarea + send on top so the input gets
             the full width, action buttons (attach / mention) below. */}
         <div className="flex items-end gap-2">

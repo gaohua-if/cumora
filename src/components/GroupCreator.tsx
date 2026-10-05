@@ -42,6 +42,16 @@ export function GroupCreator({ onClose, initialPicked }: Props) {
   const [projectId, setProjectId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const [aidaId, setAidaId] = useState<string | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    void api.ensureDefaultAida().then(async ({ aidaId: id }) => {
+      await useParticipants.getState().refresh()
+      if (alive) { setAidaId(id); setPicked(current => new Set([...current, id])) }
+    }).catch(error => { if (alive) setErr(error instanceof Error ? error.message : String(error)) })
+    return () => { alive = false }
+  }, [])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -56,6 +66,7 @@ export function GroupCreator({ onClose, initialPicked }: Props) {
   }, [])
 
   const toggle = (id: string) => {
+    if (id === aidaId) return
     setPicked((s) => {
       const next = new Set(s)
       if (next.has(id)) next.delete(id)
@@ -95,7 +106,7 @@ export function GroupCreator({ onClose, initialPicked }: Props) {
     }
   }
 
-  const canSubmit = picked.size > 0 && !busy
+  const canSubmit = picked.size > 0 && !!aidaId && !busy
 
   return (
     <div
@@ -176,6 +187,7 @@ export function GroupCreator({ onClose, initialPicked }: Props) {
           )}
 
           <label className="block text-[11px] font-bold tracking-wider uppercase text-ink-500 mb-1">{t('group.fieldMembers')}</label>
+          <p className="text-xs text-ink-500 mb-2">Aida 默认加入群聊。你可以直接创建只有 Aida 的群聊，或再选择专业 Agent。</p>
           <div className="text-[11.5px] text-ink-300 mb-2 font-display italic">
             {picked.size === 0 ? t('group.clickToAdd') : t('group.nSelected', { n: picked.size })}
           </div>
@@ -186,6 +198,7 @@ export function GroupCreator({ onClose, initialPicked }: Props) {
                 <button
                   key={p.id}
                   type="button"
+                  aria-label={p.id === aidaId ? 'Aida（默认成员）' : p.name}
                   onClick={() => toggle(p.id)}
                   className="text-left flex items-center gap-3 py-2 px-2.5 rounded-[10px] transition"
                   style={{

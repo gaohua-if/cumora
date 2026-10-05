@@ -82,6 +82,8 @@ interface TenantTagged {
 export interface MessageNewEvent extends TenantTagged {
   type: 'message.new'
   conversationId: string
+  taskId?:string
+  taskDelivery?:boolean
   message: {
     id: string
     conversationId: string

@@ -17,6 +17,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import type { PoolClient } from 'pg'
 import { pool } from '../../db/pool.js'
+import { agentTaskMode, requireLegacyAgent,withoutTaskMessages } from '../../tasks/legacy-guard.js'
 import { CH_MESSAGE_NEW, CH_TYPING, publish, redis } from '../../redis.js'
 import { enqueueBroadcast, nudgeRealtimeOutbox } from '../../realtime-outbox.js'
 import { notifyAlert } from '../../alerting.js'
@@ -125,9 +126,11 @@ function toMemoryRow(r: MemoryQueryRow): MemoryRow {
 }
 
 export class InProcRuntimeClient implements AgentRuntimeClient {
+  async taskMode(agentId: string): Promise<boolean> { return agentTaskMode(agentId) }
   /** Persona row (delegates to the cached personas.ts helper).
    *  Returns null when the id isn't an active agent. */
   async loadPersona(agentId: string): Promise<PersonaRow | null> {
+    await requireLegacyAgent(agentId)
     return getPersona(agentId)
   }
 
@@ -136,6 +139,7 @@ export class InProcRuntimeClient implements AgentRuntimeClient {
   }
 
   async loadInbox(agentId: string): Promise<InboxRow[]> {
+    await requireLegacyAgent(agentId)
     // Resolve membership through the normalized participant-led index, then
     // pull each conversation's unread tail with the message index. This avoids
     // both the old JSONB seq-scan and its dedicated enable_seqscan=off session.
@@ -225,6 +229,7 @@ export class InProcRuntimeClient implements AgentRuntimeClient {
         LIMIT 200`,
       [agentId],
     )
+    rows.splice(0,rows.length,...await withoutTaskMessages(rows))
     await refreshAttachmentUrls(rows)
     // NOTE: This used to call recordSeen() here to advance the freshness-
     // preflight boundary, but that fired for EVERY caller of loadInbox —
@@ -265,6 +270,7 @@ export class InProcRuntimeClient implements AgentRuntimeClient {
     limits: { semantic?: number; recent?: number; total?: number } = {},
     scope: { projectIds?: readonly string[]; conversationIds?: readonly string[] } = {},
   ): Promise<MemoryRow[]> {
+    await requireLegacyAgent(agentId)
     const semanticLimit = limits.semantic ?? 20
     const recentLimit = limits.recent ?? 10
     const totalLimit = limits.total ?? 40
@@ -355,6 +361,7 @@ export class InProcRuntimeClient implements AgentRuntimeClient {
    *  slice, so neither should agents. Reactions get pre-aggregated as a
    *  JSON array so the prompt renderer doesn't need a second roundtrip. */
   async loadContext(agentId: string, companyId: string, conversationIds: string[]): Promise<ContextRow[]> {
+    await requireLegacyAgent(agentId)
     if (conversationIds.length === 0) return []
     // conversationIds can come directly from an authenticated runtime caller.
     // They narrow the read but do not authorize it: bind every conversation to
@@ -463,6 +470,7 @@ export class InProcRuntimeClient implements AgentRuntimeClient {
         ORDER BY conversation_id, created_at ASC`,
       [agentId, companyId, conversationIds],
     )
+    rows.splice(0,rows.length,...await withoutTaskMessages(rows))
     await refreshAttachmentUrls(rows)
     return rows
   }
@@ -471,6 +479,7 @@ export class InProcRuntimeClient implements AgentRuntimeClient {
    *  Climate is GLOBAL on purpose (issue #45): it does not follow the
    *  project. Same agent identity across groups. */
   async loadClimate(agentId: string): Promise<ClimateRow[]> {
+    await requireLegacyAgent(agentId)
     const { rows } = await pool.query<ClimateRow>(
       `SELECT about_id, affinity, trust, last_note, updated_at
          FROM agent_climate
@@ -486,6 +495,7 @@ export class InProcRuntimeClient implements AgentRuntimeClient {
    *  load_skill tool. Implementation lives in skills.ts since it's
    *  tightly coupled with the SKILL.md frontmatter parser. */
   async loadSkillsIndex(agentId: string): Promise<SkillIndexEntry[]> {
+    await requireLegacyAgent(agentId)
     return loadSkillsIndexImpl(agentId)
   }
 
@@ -509,6 +519,7 @@ export class InProcRuntimeClient implements AgentRuntimeClient {
    *  Heavy lifting lives in personas.ts since it joins participants +
    *  agent_workspace + the rendered team roster. */
   async buildSystemPrompt(agentId: string): Promise<string | null> {
+    await requireLegacyAgent(agentId)
     return buildSystemPromptImpl(agentId)
   }
 
@@ -583,6 +594,7 @@ export class InProcRuntimeClient implements AgentRuntimeClient {
 
   async authorizeModelCall(args: { runId: string; agentId: string; companyId: string; providerCallId: string; model: string; maxInputTokens: number; maxOutputTokens: number }) {
     const { authorizeGovernedModelCall } = await import('../../governance/runtime-budget.js')
+    await requireLegacyAgent(args.agentId)
     return authorizeGovernedModelCall(pool, args)
   }
 

@@ -56,6 +56,7 @@ export const en = {
   'nav.library': 'Library',
   'nav.agents': 'Agents',
   'nav.me': 'Me',
+  'nav.settings': 'Configuration',
   'nav.observe': 'Observe',
   // ─── sign-in ──────────────────────────────────────────────────────
   'auth.welcome': 'Welcome to cumora',

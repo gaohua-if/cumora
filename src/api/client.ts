@@ -108,8 +108,8 @@ export async function http<T>(path: string, init?: RequestInit): Promise<T> {
   if (company) headers['x-company-id'] = company
   if (getDevModeEnabled()) headers['x-cumora-dev-mode'] = '1'
   const res = await fetch(`${API}${path}`, {
-    headers: { ...headers, ...(init?.headers ?? {}) },
     ...init,
+    headers: { ...headers, ...(init?.headers ?? {}) },
   })
   // Auto-clear session on 401 so the AuthGate boots back to the login screen.
   if (res.status === 401 && !path.startsWith('/auth/')) {
@@ -1050,6 +1050,8 @@ export const api = {
   generateAgentAvatar: (id: string) =>
     http<{ url: string }>(`/agents/${encodeURIComponent(id)}/avatar/generate`, { method: 'POST' }),
   getConversations: () => http<ApiConversation[]>('/conversations'),
+  ensureDefaultAida: () => http<{ aidaId: string }>('/conversations/default-aida', { method: 'POST', body: '{}' }),
+  initializeGroupAida: (id: string) => http<{ aidaId: string; bindingId: string | null; defaultName: string; defaultAgentId: string }>(`/conversations/${encodeURIComponent(id)}/default-aida`, { method: 'POST', body: '{}' }),
   createGroup: (input: { title: string; members: string[]; subtitle?: string; projectId?: string | null }) =>
     http<{ id: string; members: string[]; projectId: string | null }>('/conversations', {
       method: 'POST',
@@ -1147,14 +1149,16 @@ export const api = {
      *  tempId). The server persists it and returns the original message when
      *  the same send is retried. */
     clientId?: string | null,
+    taskId?: string,
   ) =>
-    http<{ id: string; sequence: number }>(`/conversations/${encodeURIComponent(conversationId)}/messages`, {
+    http<{ id: string; sequence: number; taskId?: string }>(`/conversations/${encodeURIComponent(conversationId)}/messages`, {
       method: 'POST',
       body: JSON.stringify({
         body,
         attachment: attachment ?? undefined,
         quotedMessageId: quotedMessageId ?? undefined,
         clientId: clientId ?? undefined,
+        taskId: taskId || undefined,
       }),
     }),
   /* ============== Polls ====================================================
