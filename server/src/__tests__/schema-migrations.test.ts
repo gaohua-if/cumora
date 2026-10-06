@@ -30,6 +30,7 @@ const { channelTaskExecutionChecksum } = await import('../db/migrations/0015-cha
 const { taskExecutorFencesChecksum } = await import('../db/migrations/0016-task-executor-fences.js')
 const { taskLifecycleChecksum } = await import('../db/migrations/0018-task-lifecycle.js')
 const { taskDefinitionSnapshotsChecksum } = await import('../db/migrations/0019-task-definition-snapshots.js')
+const { configurationWorkbenchChecksum } = await import('../db/migrations/0020-configuration-workbench.js')
 const { taskSourceAndGovernanceLinksChecksum } = await import('../db/migrations/0017-task-source-and-governance-links.js')
 const { verifySchemaCompatibility } = await import('../db/schema-version.js')
 type SchemaVersionQueryable = import('../db/schema-version.js').SchemaVersionQueryable
@@ -98,6 +99,7 @@ test('channel task migration matches its checksum and preparation accepts schema
   assert.equal(taskSourceAndGovernanceLinksChecksum(), SCHEMA_MIGRATIONS[16].checksum)
   assert.equal(taskLifecycleChecksum(), SCHEMA_MIGRATIONS[17].checksum)
   assert.equal(taskDefinitionSnapshotsChecksum(), SCHEMA_MIGRATIONS[18].checksum)
+  assert.equal(configurationWorkbenchChecksum(), SCHEMA_MIGRATIONS[19].checksum)
   assert.equal(validateMigrationHistory(current().slice(0, 14)).currentVersion, 14)
 })
 

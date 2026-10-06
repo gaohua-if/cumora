@@ -2,6 +2,8 @@
 
 2026-10-04。设计范围：参考 Claude Tag 的配置方式，形成可审查、可实际操作的 Cumora 配置原型。
 
+2026-10-05：评审后的交互选择已整理为[配置原型交互决策](DECISIONS.zh-CN.md)，用于下一版桌面原型与后续实现；手机端暂不纳入本轮范围。下文与现有截图描述 v1，已确认的调整以决策文档为准，尚未应用到 HTML。
+
 预览：[打开原型](http://192.168.28.113:5182/configuration-workbench-v1.html)。单文件：[configuration-workbench-v1.html](../configuration-workbench-v1.html)，下载后可直接用浏览器打开。原型使用示例数据，仅通过独立 localStorage key 保存到当前浏览器；5181 现有业务服务、真实 Agent 和群聊配置不受这些编辑影响。5182 只提供静态文件，不调用 API 或外部 MCP/GitHub。
 
 ## 配置对象与页面

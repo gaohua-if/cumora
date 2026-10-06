@@ -161,7 +161,7 @@ export function MobileApp() {
   return (
     <div className="relative z-10 h-[100dvh] w-screen flex flex-col bg-paper">
       <main className="flex-1 relative overflow-hidden">
-        {view === 'settings' && <SettingsView />}
+        {view === 'settings' && <SettingsView desktop={false} />}
         {/* Top-level view switcher — was previously
             `<AnimatePresence mode="wait">`, which serializes exits
             before the next enter. Problem: if ANY nested exit got

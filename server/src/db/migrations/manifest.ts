@@ -96,12 +96,13 @@ export const SCHEMA_MIGRATIONS = [
   { version: 17, name: '0017_task_source_and_governance_links', checksum: 'd771ea49796bcbce59db2c1cb7b28fc297d736f99b866b86b37e9094c07d7563' },
   { version: 18, name: '0018_task_lifecycle', checksum: '7eeecb2e7e42c56329e9b3236c1494fc79401b74fd9472917923325a254421ec' },
   { version: 19, name: '0019_task_definition_snapshots', checksum: '646162621abd01727e41be3354ecce7e71fc7bf42281eccfad36b72e5bb5374f' },
+  { version: 20, name: '0020_configuration_workbench', checksum: '41871132f398ac3989a0e29c177694d18f919b469c9017c79a2f40f9b9399be1' },
 ] as const satisfies readonly MigrationMetadata[]
 
 /** This build intentionally supports one exact schema range. Expand/contract
  * releases may widen the range, but both bounds must remain explicit. */
 export const MIN_SUPPORTED_SCHEMA_VERSION = 14
-export const MAX_SUPPORTED_SCHEMA_VERSION = 19
+export const MAX_SUPPORTED_SCHEMA_VERSION = 20
 
 function assertManifestShape(): void {
   for (let i = 0; i < SCHEMA_MIGRATIONS.length; i++) {

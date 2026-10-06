@@ -595,7 +595,7 @@ P1 所需的来源隔离、当前授权检查、候选记忆和安全检索不�
 
 ## 13. OpenSpec 使用方式
 
-继续实施使用 `$openspec-apply-change introduce-channel-task-execution`，查询进度使用 `openspec instructions apply --change introduce-channel-task-execution --json`，严格验证使用 `openspec validate introduce-channel-task-execution --strict`。此 change 覆盖全部 P0–P4；后续扩展基于实际 specs 和已准入组合另建 change。
+此 change 覆盖全部 P0–P4，已于 2026-10-06 同步主规格并归档。实施进度与设计记录见 [归档变更](../openspec/changes/archive/2026-10-06-introduce-channel-task-execution/tasks.md)，当前规格使用 `openspec validate --specs --strict` 校验；后续扩展基于实际 specs 和已准入组合另建 change。
 
 实施时若发现必须改变 v0.4 的归属、授权或数据流，先修订对应规划并明确决策，不能以“兼容现有代码”为由静默改变基线。
 

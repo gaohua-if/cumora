@@ -1,0 +1,295 @@
+{
+  "timestamp": "2026-10-05T09:25:33.751Z",
+  "url": "http://192.168.28.113:5181",
+  "companyId": "co-a09a2bc0-f",
+  "scope": "desktop-real-workspace",
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "imageId": "sha256:31c689fc52bde4ab040ea20d0c3259f4e66efd365d788ac5a9b522673aba78b1",
+  "sourceHashes": {
+    "server/src/tasks/default-aida.ts": "740424cf813ae5f89420eeb79cd475d4f1eb211504500ebd72af7e652eaa49f0",
+    "server/src/tasks/service.ts": "e9c57de9c4f7c50534ad8dd1d2cfbb12b4bd633cdabdd55cea8f133a039f6a04",
+    "server/src/tasks/plans.ts": "c0b5a79fdec64540bb7dfa53ff1a88dd7bd9d50cfb804f9a993dcf3b78c84ddd",
+    "server/src/tasks/execution.ts": "f982e486c897a2fadae372c73c5c4d5e8822ee00a342485610d3429509015a75",
+    "server/src/api/tasks-router.ts": "4a1be1c4893bccb5ca05a853ef51e30e37c05b79fe9a1aa98865bb30ea8610db",
+    "server/docker/cumora-server.Dockerfile": "e68ff84533aa9a36aa68ef98d19bd9b6f1dc122fac886b8cac91b29697986520",
+    "src/components/ConfigurationWorkbench.tsx": "ceab77b51daa55e2f200c5133a4b864a76250e9043b6f901c4b4b67c18c4f9eb",
+    "src/components/ConfigurationWorkbench.css": "dd6cec39d8a801c3e5311a724b3de98dc08051f983db84b89feed37bb696bba7",
+    "src/components/SettingsView.tsx": "f1026ea5991d7d3c8781c04b8fffda97ce9ffc09e31e49c4144d5c0f44d2a74f",
+    "src/mobile/MobileApp.tsx": "b007de01db34e8124bf794efbf550424e52650099cfb34811326f9a80aa19f5c",
+    "src/lib/create-idempotency.ts": "c7ee7b921e013e093794a1f2981689cfdbd5209f699315d584fc29ca000d6e62",
+    "shared/configuration.ts": "de977e266f6ea11f1bf8715fbc080ddf511c0bfca21f6d45b3a7e418c8df439e",
+    "server/src/tasks/configuration.ts": "4912bc59c21424eee8731d8b0237d44909dba0d5d9d8df98edd3b09cc03932b0",
+    "server/src/db/migrations/0020-configuration-workbench.ts": "c172e1d50684bb18562e9b0fb84df55c971d074dd91e70cc435c222afe967f67",
+    "scripts/verify-configuration-workbench.mjs": "81f5e095fd5bc617c3b1619daf80fb02dfc13b4ac2e208d47960ab5ceed982ca"
+  },
+  "objects": {
+    "skill": "验证 Skill 1791192324948",
+    "second": "验证辅助 Skill 1791192324948",
+    "agent": "验证工作台 Agent",
+    "bundle": "验证 Access Bundle 1791192324948",
+    "solo": "验证 · 工作台仅 Aida 1791192324948",
+    "group": "验证 · 工作台多 Agent 1791192324948",
+    "agentId": "agent",
+    "soloId": "g-225aafa5",
+    "groupId": "g-be6e53fa"
+  },
+  "checks": [
+    {
+      "id": "WB01",
+      "description": "真实配置入口、默认 Aida 与本地执行位置",
+      "passed": true
+    },
+    {
+      "id": "WB02-Agent",
+      "description": "撤销新建后修复选中对象",
+      "passed": true
+    },
+    {
+      "id": "WB02-Skill 库",
+      "description": "撤销新建后修复选中对象",
+      "passed": true
+    },
+    {
+      "id": "WB02-Access Bundles",
+      "description": "撤销新建后修复选中对象",
+      "passed": true
+    },
+    {
+      "id": "WB02-群聊",
+      "description": "撤销新建后修复选中对象",
+      "passed": true
+    },
+    {
+      "id": "WB03",
+      "description": "Skill 库服务端发布和刷新读回",
+      "passed": true
+    },
+    {
+      "id": "WB04",
+      "description": "真实本地 Agent 创建和固定 Skill 引用",
+      "passed": true
+    },
+    {
+      "id": "WB05",
+      "description": "MCP、Domain、GitHub 配置服务端持久化",
+      "passed": true
+    },
+    {
+      "id": "WB06",
+      "description": "仅 Aida 和多个 Agent 群聊自动初始化默认成员",
+      "passed": true
+    },
+    {
+      "id": "WB07",
+      "description": "预览具体语言、资源实际身份和范围",
+      "passed": true
+    },
+    {
+      "id": "WB08",
+      "description": "Skill 发布后 Agent 保留原版本",
+      "passed": true
+    },
+    {
+      "id": "WB09",
+      "description": "Agent 发布后群聊保留旧定义",
+      "passed": true
+    },
+    {
+      "id": "WB10",
+      "description": "明确升级后预览新 Skill、提示词和 Agent 语言",
+      "passed": true
+    },
+    {
+      "id": "WB11",
+      "description": "群聊和成员语言优先级及来源",
+      "passed": true
+    },
+    {
+      "id": "WB12",
+      "description": "Bundle 选择器展示当前及最新版本",
+      "passed": true
+    },
+    {
+      "id": "WB13",
+      "description": "普通确认不隐式升级 Bundle",
+      "passed": true
+    },
+    {
+      "id": "WB14",
+      "description": "明确升级 Bundle 后刷新引用新版",
+      "passed": true
+    },
+    {
+      "id": "WB15",
+      "description": "嵌套导入成功和取消均回到原选择器并保留选择",
+      "passed": true
+    },
+    {
+      "id": "WB16",
+      "description": "成员 Skills 独立于 Agent 基础定义",
+      "passed": true
+    },
+    {
+      "id": "WB17",
+      "description": "删除最后一个资源引用仍为空子集",
+      "passed": true
+    },
+    {
+      "id": "WB18",
+      "description": "all、subset、none 是独立且稳定的访问模式",
+      "passed": true
+    },
+    {
+      "id": "WB19",
+      "description": "未保存切换可继续、放弃或保存",
+      "passed": true
+    },
+    {
+      "id": "WB20",
+      "description": "修订冲突提示且草稿保留，显式载入后可恢复",
+      "passed": true
+    },
+    {
+      "id": "WB21",
+      "description": "重新加载应用保留真实成员和固定引用",
+      "passed": true
+    },
+    {
+      "id": "WB22",
+      "description": "浏览器无运行异常",
+      "passed": true
+    }
+  ],
+  "errors": [],
+  "requests": [
+    "/",
+    "/assets/index-BTUFtp17.js",
+    "/assets/index-DTjhGP4G.css",
+    "/manifest.webmanifest",
+    "/api/auth/me",
+    "/api/auth/ws-ticket",
+    "/api/devtools/capabilities",
+    "/api/projects",
+    "/api/devtools/capabilities",
+    "/api/participants",
+    "/api/conversations",
+    "/api/peek/agent-chats",
+    "/api/computers",
+    "/api/me/preferences",
+    "/api/agents/autonomy",
+    "/logo.png",
+    "/cloud.png",
+    "/cloud-blink.png",
+    "/api/tasks/workbench",
+    "/api/participants",
+    "/api/conversations",
+    "/api/peek/agent-chats",
+    "/api/computers",
+    "/favicon-32.png",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/conversations",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/conversations",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench/preview",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/api/tasks/workbench",
+    "/",
+    "/assets/index-BTUFtp17.js",
+    "/assets/index-DTjhGP4G.css",
+    "/api/auth/me",
+    "/manifest.webmanifest",
+    "/favicon-32.png",
+    "/logo.png",
+    "/api/auth/ws-ticket",
+    "/api/devtools/capabilities",
+    "/api/projects",
+    "/api/devtools/capabilities",
+    "/api/participants",
+    "/api/conversations",
+    "/api/peek/agent-chats",
+    "/api/computers",
+    "/api/me/preferences",
+    "/api/agents/autonomy",
+    "/cloud.png",
+    "/cloud-blink.png",
+    "/api/tasks/workbench",
+    "/api/participants",
+    "/api/conversations",
+    "/api/peek/agent-chats",
+    "/api/computers",
+    "/api/tasks/workbench"
+  ]
+}

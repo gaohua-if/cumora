@@ -8,6 +8,7 @@ import { TaskKnowledgeService } from '../tasks/knowledge.js'
 import { TaskOperationService } from '../tasks/operations.js'
 import { TaskIngressService } from '../tasks/ingress.js'
 import { TaskWorkspaceService } from '../tasks/workspace.js'
+import { ConfigurationService } from '../tasks/configuration.js'
 
 interface Deps { pool: Pool; requireCompany(req: Request & AuthedRequest): Promise<{ companyId: string; userId: string }> }
 
@@ -31,6 +32,7 @@ export function createTasksRouter(deps: Deps): Router {
   const execution = new TaskExecutionService(tasks)
   const knowledge = new TaskKnowledgeService(tasks)
   const workspace = new TaskWorkspaceService(tasks)
+  const configuration = new ConfigurationService(tasks)
   const principal = async (req: Request): Promise<TaskPrincipal> => {
     const auth = await deps.requireCompany(req)
     return { companyId: auth.companyId, id: auth.userId }
@@ -45,6 +47,9 @@ export function createTasksRouter(deps: Deps): Router {
     }
   }
   router.get('/configuration', route(async (_req, actor) => tasks.configuration(actor)))
+  router.get('/workbench', route(async (_req, actor) => configuration.read(actor)))
+  router.patch('/workbench', route(async (req, actor) => configuration.mutate(actor, body(req, ['revision', 'action', 'objectId', 'body', 'language', 'channelId', 'title', 'configuration', 'bundleVersionIds', 'agentId', 'definitionVersionId', 'alias', 'isDefault']))))
+  router.post('/workbench/preview', route(async (req, actor) => configuration.preview(actor, body(req, ['channelId', 'bindingId', 'group', 'member', 'bundleVersionIds']))))
   router.post('/workspace/admissions', route(async(req,actor)=>{
     const input=body(req,['computerId','engine','binaryHash','verificationRef','checks','modelProvider'])
     await workspace.admit(actor,{computerId:text(input.computerId),engine:text(input.engine),binaryHash:text(input.binaryHash),verificationRef:text(input.verificationRef,2000),checks:input.checks as Record<string,unknown>,modelProvider:input.modelProvider as 'server'|'codex-login'|undefined});return {ok:true}

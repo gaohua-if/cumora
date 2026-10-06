@@ -14,6 +14,9 @@ function randomRequestId(): string {
   return `req-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
 }
 
+/** A fresh form/object ID, including HTTP LAN origins without randomUUID. */
+export function newCreationRequestId(): string { return randomRequestId() }
+
 /** Reuse the same key after an ambiguous failure within TTL; clear only after success or non-retryable failure. */
 export function pendingCreateRequestId(
   scope: string,
@@ -64,4 +67,3 @@ export function clearPendingCreateRequestId(scope: string, normalizedInput: unkn
 export function _resetPendingCreateRequestIdsForTests(): void {
   pending.clear()
 }
-

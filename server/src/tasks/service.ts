@@ -2,6 +2,7 @@ import { randomUUID, randomBytes } from 'node:crypto'
 import type { Pool, PoolClient } from 'pg'
 import { checkTaskGovernance } from './governance.js'
 import { TaskKnowledgeService } from './knowledge.js'
+import { ConfigurationService } from './configuration.js'
 import { TaskError, hashContent, parseRule, requireLiveGrant, parseProvenance, checkDestination, canonicalJson,
   type AccessRule, type Provenance } from './contracts.js'
 
@@ -19,6 +20,7 @@ export interface BindingRecord {
   configuration: Record<string, unknown>; definition: Record<string, unknown>
   runtime_assignment_id: string; computer_id: string | null; computer_kind: string | null; engine: string
   definition_version_id:string
+  eligibility_version?:number
 }
 
 export class TaskService {
@@ -156,9 +158,10 @@ export class TaskService {
       const record=(await client.query(`SELECT conversation_id FROM channel_agent_bindings WHERE company_id=$1 AND id=$2 AND status='ACTIVE' FOR UPDATE`,[principal.companyId,id])).rows[0]
       if(!record)throw new TaskError('BINDING_INELIGIBLE',403)
       await this.member(client,principal,record.conversation_id)
-      await this.binding(client,principal.companyId,record.conversation_id,id)
+      const liveBinding = await this.binding(client,principal.companyId,record.conversation_id,id)
       if (input.isDefault) await client.query(`UPDATE channel_agent_bindings SET is_default=FALSE WHERE company_id=$1 AND conversation_id=$2 AND id<>$3 AND status='ACTIVE' AND is_default`, [principal.companyId, record.conversation_id, id])
-      await client.query(`UPDATE channel_agent_bindings SET definition_version_id=$3,alias=$4,is_default=$5,configuration=$6,version=version+1 WHERE company_id=$1 AND id=$2`,[principal.companyId,id,input.definitionVersionId,input.alias,input.isDefault,input.instructions===undefined?{}:{instructions:input.instructions}])
+      const eligibilityFence = liveBinding.eligibility_version === undefined ? '' : ',eligibility_version=eligibility_version+1'
+      await client.query(`UPDATE channel_agent_bindings SET definition_version_id=$3,alias=$4,is_default=$5,configuration=$6,version=version+1${eligibilityFence} WHERE company_id=$1 AND id=$2`,[principal.companyId,id,input.definitionVersionId,input.alias,input.isDefault,input.instructions===undefined?{}:{instructions:input.instructions}])
       await client.query(`UPDATE task_execution_contexts SET revoked_at=NOW() WHERE company_id=$1 AND binding_id=$2`,[principal.companyId,id])
       await client.query(`UPDATE task_dispatches SET state=CASE WHEN state='PENDING' THEN 'CANCELLED' ELSE 'UNKNOWN' END WHERE company_id=$1 AND state IN('PENDING','CLAIMED') AND context_id IN(SELECT id FROM task_execution_contexts WHERE company_id=$1 AND binding_id=$2)`,[principal.companyId,id])
     })
@@ -275,8 +278,9 @@ export class TaskService {
         if (grant.caller_principal_id !== principal.id || rule.audience.kind !== channel.audience.kind || rule.audience.id !== channel.audience.id) throw new TaskError('GRANT_CALLER_DENIED', 403)
       }
       const id = randomUUID()
+      const snapshot = await new ConfigurationService(this).snapshot(client, principal.companyId, binding)
       const inserted = await client.query<TaskRecord>(`INSERT INTO channel_tasks(id,company_id,conversation_id,creator_principal_id,accountable_binding_id,root_task_id,objective,ingress_key,reply_message_id,board_card_id,governance_action_id,governance_attempt_id,definition_version_id,configuration)
-        VALUES($1,$2,$3,$4,$5,$1,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`, [id, principal.companyId, input.channelId, principal.id, binding.id, input.objective, input.ingressKey, input.messageId ?? null, input.boardCardId ?? null, input.governanceActionId ?? null, input.governanceAttemptId ?? null,binding.definition_version_id,{instructions:binding.configuration.instructions??binding.definition.instructions??'',role:binding.definition.role??null}])
+        VALUES($1,$2,$3,$4,$5,$1,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *`, [id, principal.companyId, input.channelId, principal.id, binding.id, input.objective, input.ingressKey, input.messageId ?? null, input.boardCardId ?? null, input.governanceActionId ?? null, input.governanceAttemptId ?? null,binding.definition_version_id,snapshot])
       await checkTaskGovernance(client, inserted.rows[0], binding)
       await client.query(`INSERT INTO task_authorization_events(id,company_id,task_id,principal_id,operation,outcome,references_json) VALUES($1,$2,$3,$4,'task.create','REQUEST_BOUND',$5)`,[randomUUID(),principal.companyId,id,principal.id,{requestHash}])
       await client.query(`INSERT INTO task_scope_revisions(company_id,task_id,revision,objective,changed_by) VALUES($1,$2,1,$3,$4)`, [principal.companyId, id, input.objective, principal.id])
@@ -576,7 +580,7 @@ export class TaskService {
       const contextId = randomUUID()
       await client.query(`INSERT INTO task_execution_contexts(id,company_id,task_id,binding_id,scope_revision,input_revision,workspace_generation,binding_version,assignment_id,computer_id,runtime,configuration,input_ids,expires_at)
         VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,NOW()+INTERVAL '15 minutes')`,
-        [contextId, principal.companyId, taskId, binding.id, task.scope_revision, task.input_revision, settings.rows[0].generation, binding.version, binding.runtime_assignment_id, binding.computer_id,
+        [contextId, principal.companyId, taskId, binding.id, task.scope_revision, task.input_revision, settings.rows[0].generation, binding.eligibility_version ?? binding.version, binding.runtime_assignment_id, binding.computer_id,
           { engine: binding.engine, computerKind: binding.computer_kind }, task.configuration, JSON.stringify(inputs.rows.map((row) => row.id))])
       const id = randomUUID()
       await client.query(`INSERT INTO task_dispatches(id,company_id,task_id,context_id,agent_id,dispatch_key) VALUES($1,$2,$3,$4,$5,$6)`, [id, principal.companyId, taskId, contextId, binding.agent_id, `${taskId}:${key}`])

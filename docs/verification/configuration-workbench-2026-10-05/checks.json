@@ -1,0 +1,27 @@
+{
+  "scope": "configuration-workbench-targeted",
+  "unitTests": {
+    "passed": 24,
+    "files": [
+      "server/src/__tests__/configuration-resolution.test.ts",
+      "server/src/__tests__/schema-migrations.test.ts"
+    ]
+  },
+  "integrationTests": {
+    "passed": 36,
+    "execution": "serial isolated Postgres and Redis; related suites run separately",
+    "files": {
+      "server/src/__integration__/channel-task-execution.test.ts": 26,
+      "server/src/__integration__/configuration-workbench.test.ts": 6,
+      "server/src/__integration__/group-default-aida.test.ts": 4
+    }
+  },
+  "frontendTypecheck": true,
+  "serverTypecheck": true,
+  "productionBuild": true,
+  "changedSourceLint": true,
+  "openspecStrictValidation": true,
+  "prototypeBrowserChecks": 22,
+  "productionBrowserChecks": 25,
+  "dataFlowDocumentUnchanged": true
+}

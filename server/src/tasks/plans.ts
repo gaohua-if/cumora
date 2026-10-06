@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { TaskError, validatePlan, parseProvenance, requireLiveGrant, attenuateRule, hashContent, type TaskPlan } from './contracts.js'
 import { TaskService, type TaskRecord } from './service.js'
 import { TaskExecutionService, type Claim } from './execution.js'
+import { ConfigurationService } from './configuration.js'
 
 export class TaskPlanService {
   constructor(readonly tasks: TaskService) {}
@@ -16,6 +17,8 @@ export class TaskPlanService {
       if (old.rowCount) throw new TaskError('PLAN_ALREADY_COMMITTED')
       const bindings = await client.query<{ id: string }>(`SELECT id FROM channel_agent_bindings WHERE company_id=$1 AND conversation_id=$2 AND status='ACTIVE'`, [companyId, root.conversation_id])
       const plan = validatePlan(proposal, new Set(bindings.rows.map((row) => row.id)))
+      const configuredParallelism = (root.configuration.workbench as { settings?: { parallelism?: number } } | undefined)?.settings?.parallelism
+      if (configuredParallelism !== undefined && plan.parallelism > configuredParallelism) throw new TaskError('PLAN_PARALLELISM_LIMIT')
       const grantRows = await client.query(`SELECT v.*,g.version AS live_version,g.revoked_at AS live_revoked,g.expires_at AS live_expires
         FROM task_grant_versions v JOIN access_grants g ON g.id=v.source_grant_id AND g.company_id=v.company_id WHERE v.company_id=$1 AND v.task_id=$2 AND v.scope_revision=$3 AND v.revoked_at IS NULL FOR SHARE OF v,g`, [companyId, root.id, root.scope_revision])
       const grants = new Map(grantRows.rows.map((row) => [row.id, row]))
@@ -32,8 +35,9 @@ export class TaskPlanService {
         } else if(member.governanceAttemptId) throw new TaskError('GOVERNANCE_MAPPING_REQUIRED',403)
         if (member.role === 'VERIFY' && member.dependsOn.some((key) => plan.members.find((dependency) => dependency.key === key)?.bindingId === member.bindingId)) throw new TaskError('VERIFIER_MUST_BE_INDEPENDENT', 403)
         const taskId = ids.get(member.key)!
+        const snapshot = await new ConfigurationService(this.tasks).snapshot(client, companyId, childBinding)
         await client.query(`INSERT INTO channel_tasks(id,company_id,conversation_id,creator_principal_id,accountable_binding_id,parent_task_id,root_task_id,objective,ingress_key,board_card_id,governance_action_id,governance_attempt_id,definition_version_id,configuration)
-          VALUES($1,$2,$3,$4,$5,$6,$6,$7,$8,$9,$10,$11,$12,$13)`, [taskId, companyId, root.conversation_id, root.creator_principal_id, member.bindingId, root.id, member.objective, `plan:${root.id}:${revision}:${member.key}`,root.board_card_id,childAction,member.governanceAttemptId??null,childBinding.definition_version_id,{instructions:childBinding.configuration.instructions??childBinding.definition.instructions??'',role:member.role==='VERIFY'?'VERIFY':childBinding.definition.role??null}])
+          VALUES($1,$2,$3,$4,$5,$6,$6,$7,$8,$9,$10,$11,$12,$13)`, [taskId, companyId, root.conversation_id, root.creator_principal_id, member.bindingId, root.id, member.objective, `plan:${root.id}:${revision}:${member.key}`,root.board_card_id,childAction,member.governanceAttemptId??null,childBinding.definition_version_id,{...snapshot,role:member.role==='VERIFY'?'VERIFY':snapshot.role}])
         await client.query(`INSERT INTO task_scope_revisions(company_id,task_id,revision,objective,changed_by) VALUES($1,$2,1,$3,$4)`, [companyId, taskId, member.objective, root.creator_principal_id])
         const child = (await client.query<TaskRecord>(`SELECT * FROM channel_tasks WHERE company_id=$1 AND id=$2`, [companyId, taskId])).rows[0]
         await checkTaskGovernance(client,child,childBinding)

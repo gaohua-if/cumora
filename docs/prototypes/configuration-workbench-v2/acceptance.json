@@ -1,0 +1,131 @@
+{
+  "timestamp": "2026-10-05T06:59:16.558Z",
+  "url": "http://127.0.0.1:5182/configuration-workbench-v2.html",
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "scope": "desktop-browser-prototype",
+  "sourceHashes": {
+    "docs/prototypes/configuration-workbench-v2.html": "7e6041819d1eb093673439e5d595bc7dcf95bdcc5300fbd5ffd8cfa557ee3a18",
+    "scripts/verify-configuration-prototype.mjs": "ead19225fee631d6bcd49877693289f2de5a89e68ea76fabddde314f9280c358"
+  },
+  "checks": [
+    {
+      "id": "AC01",
+      "description": "四类配置与本地默认 Aida",
+      "passed": true
+    },
+    {
+      "id": "AC02",
+      "description": "仅 Aida 群聊与多 Agent 群聊",
+      "passed": true
+    },
+    {
+      "id": "AC03",
+      "description": "删除最后一个子集引用保持为空",
+      "passed": true
+    },
+    {
+      "id": "AC04",
+      "description": "不使用外部资源是独立配置状态",
+      "passed": true
+    },
+    {
+      "id": "AC05-agents",
+      "description": "撤销新建 agents 后可正常编辑",
+      "passed": true
+    },
+    {
+      "id": "AC05-bundles",
+      "description": "撤销新建 bundles 后可正常编辑",
+      "passed": true
+    },
+    {
+      "id": "AC05-channels",
+      "description": "撤销新建 channels 后可正常编辑",
+      "passed": true
+    },
+    {
+      "id": "AC05-skills",
+      "description": "撤销新建 skills 后可正常编辑",
+      "passed": true
+    },
+    {
+      "id": "AC06",
+      "description": "选择器展示当前 v2 与最新 v3",
+      "passed": true
+    },
+    {
+      "id": "AC07",
+      "description": "普通选择确认不隐式升级 Bundle",
+      "passed": true
+    },
+    {
+      "id": "AC08",
+      "description": "明确升级 Bundle 后引用新版",
+      "passed": true
+    },
+    {
+      "id": "AC09",
+      "description": "导入返回原成员选择器，保留选择并勾选新 Skill",
+      "passed": true
+    },
+    {
+      "id": "AC10",
+      "description": "确认后 Skill 仅配置给当前群聊成员",
+      "passed": true
+    },
+    {
+      "id": "AC11",
+      "description": "语言继承有终点并显示来源",
+      "passed": true
+    },
+    {
+      "id": "AC12",
+      "description": "成员语言优先且预览标明来源",
+      "passed": true
+    },
+    {
+      "id": "AC13",
+      "description": "预览逐项身份、身份来源与资源操作范围",
+      "passed": true
+    },
+    {
+      "id": "AC14",
+      "description": "Skill 发布不改变 Agent 固定引用",
+      "passed": true
+    },
+    {
+      "id": "AC15",
+      "description": "Agent 发布不改变已有群聊引用",
+      "passed": true
+    },
+    {
+      "id": "AC16",
+      "description": "群聊升级使用新提示词和 Skill，群聊语言优先于 Agent",
+      "passed": true
+    },
+    {
+      "id": "AC17",
+      "description": "配置升级后旧任务快照不变，新快照使用新版",
+      "passed": true
+    },
+    {
+      "id": "AC18",
+      "description": "刷新保留固定引用和任务快照",
+      "passed": true
+    },
+    {
+      "id": "AC19",
+      "description": "无浏览器异常或业务 API / 外部连接请求",
+      "passed": true
+    }
+  ],
+  "errors": [],
+  "requests": [
+    "http://127.0.0.1:5182/configuration-workbench-v2.html",
+    "http://127.0.0.1:5182/favicon.ico",
+    "http://127.0.0.1:5182/configuration-workbench-v2.html"
+  ]
+}

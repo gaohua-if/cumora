@@ -200,3 +200,25 @@ test('an engine with a preset keeps it when its CLI fails to list', async () => 
     await cleanup()
   }
 })
+
+test('Codex account protocol catalog excludes retired presets and advertises a real fast model', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'cumora-codex-account-catalog-'))
+  const bin = join(root, 'codex')
+  const script = `#!${process.execPath}
+const readline = require('node:readline');
+readline.createInterface({input:process.stdin}).on('line',line=>{
+ const m=JSON.parse(line);
+ if(m.method==='initialize') console.log(JSON.stringify({id:m.id,result:{}}));
+ if(m.method==='model/list') console.log(JSON.stringify({id:m.id,result:{data:[{id:'gpt-6-sol',model:'gpt-6-sol',displayName:'Sol',isDefault:true},{id:'gpt-6-luna',model:'gpt-6-luna',displayName:'Luna'}]}}));
+});
+`
+  await writeFile(bin, script, { mode: 0o755 })
+  try {
+    clearModelCatalogCache()
+    const actual = await discoverEngineModelCatalog('codex', bin, true)
+    assert.equal(actual.source, 'protocol')
+    assert.deepEqual(actual.models.map(model => model.id), ['gpt-6-sol', 'gpt-6-luna'])
+    assert.equal(actual.defaultModel, 'gpt-6-sol')
+    assert.equal(actual.defaultFastModel, 'gpt-6-luna')
+  } finally { await rm(root, { recursive: true, force: true }); clearModelCatalogCache() }
+})

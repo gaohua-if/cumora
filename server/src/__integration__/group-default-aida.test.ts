@@ -83,3 +83,21 @@ test('group initializer rejects non-members/private conversations and installati
     assert.equal(queries.length, 1)
   } finally { await f.close() }
 })
+
+test('new groups select latest Agent version while initialized groups retain fixed references', async () => {
+  const f = await fixture()
+  try {
+    const first = await f.post('/conversations', { title: 'Before publication', members: ['group-worker'] })
+    assert.equal(first.status, 201)
+    const oldGroup = await first.json() as { id: string }
+    const pinned = (await pool.query(`SELECT b.definition_version_id,d.definition_id FROM channel_agent_bindings b JOIN agent_definition_versions d ON d.company_id=b.company_id AND d.id=b.definition_version_id WHERE b.company_id=$1 AND b.conversation_id=$2 AND b.agent_id='group-worker'`, [actor.companyId, oldGroup.id])).rows[0]
+    const latest = await tasks.define(actor, pinned.definition_id, { name: 'Worker', role: 'WORK', instructions: 'Published latest configuration' })
+    const next = await f.post('/conversations', { title: 'After publication', members: ['group-worker'] })
+    assert.equal(next.status, 201)
+    const newGroup = await next.json() as { id: string }
+    await f.post(`/conversations/${oldGroup.id}/default-aida`)
+    const bindings = (await pool.query(`SELECT conversation_id,definition_version_id FROM channel_agent_bindings WHERE company_id=$1 AND agent_id='group-worker' ORDER BY created_at`, [actor.companyId])).rows
+    assert.equal(bindings.find(b => b.conversation_id === oldGroup.id).definition_version_id, pinned.definition_version_id)
+    assert.equal(bindings.find(b => b.conversation_id === newGroup.id).definition_version_id, latest)
+  } finally { await f.close() }
+})

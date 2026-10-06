@@ -21,6 +21,7 @@ import { CH_STATUS, publish } from '../../redis.js'
 import { normalizeTier, type Tier } from '../../tier.js'
 import { signAgentToken } from '../runtime/jwt.js'
 import type { EngineModelCatalog, EngineModelOption, FastModelScope, ModelCatalogSource } from './model-catalog.js'
+import { resolveCodexModelDefaults } from './codex-model-defaults.js'
 
 export type ComputerKind = 'cloud' | 'local' | 'vps'
 export type EngineId = 'managed' | 'claude' | 'codex' | 'grok' | 'cursor' | 'opencode' | 'pi' | 'gemini' | 'qwen' | 'antigravity' | 'zcode'
@@ -695,6 +696,10 @@ export async function listAgentsForComputer(computerId: string, supportsProvider
       ? engineDefaults as EngineDefaultsMap
       : {}) as EngineDefaultsMap
     const engineDefaultsForAgent = agent.engine ? defaults[agent.engine] : undefined
+    if (agent.engine === 'codex') {
+      return { ...agent, ...resolveCodexModelDefaults({ model: agent.model, fastModel: agent.fastModel,
+        computer: engineDefaultsForAgent, deploymentModel: codexDefault, catalog: localCatalog }) }
+    }
     // A custom Claude endpoint owns its model namespace. Its reported defaults
     // fill only unpinned fields; explicit per-Agent choices still win. When it
     // cannot name a main/fast default, leave that field null so the CLI chooses

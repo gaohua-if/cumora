@@ -429,7 +429,14 @@ export async function discoverEngineModelCatalog(
     }
   } else if (id === 'codex') {
     const result = await discoverCodex(binPath)
-    if (result?.models.length) catalog = withPreset(id, result.models, 'protocol', result.defaultModel)
+    if (result?.models.length) {
+      const fast = result.models.find(model => model.recommendedFor?.includes('small'))
+        ?? result.models.find(model => /(?:mini|luna)(?:-|$)/i.test(model.id))
+      // model/list already describes this login. Vendor presets can include
+      // retired or inaccessible models and must not expand a successful probe.
+      catalog = { ...clonePreset(id), models: result.models, source: 'protocol',
+        defaultModel: result.defaultModel, defaultFastModel: fast?.id ?? null }
+    }
   } else if (id === 'cursor') {
     const models = parseListedModels(await runText(binPath, ['models']), 'cursor')
     if (models.length) catalog = withPreset(id, models, 'cli', null)

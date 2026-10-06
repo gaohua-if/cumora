@@ -37,7 +37,7 @@ export class DefaultAidaService {
       WHERE p.company_id=$1 AND m.conversation_id=$2 AND p.kind='agent' AND p.departed_at IS NULL AND p.id<>$3
       AND NOT EXISTS(SELECT 1 FROM channel_agent_bindings b WHERE b.company_id=p.company_id AND b.conversation_id=m.conversation_id AND b.agent_id=p.id AND b.status='ACTIVE') ORDER BY p.id FOR SHARE OF p,m`, [actor.companyId, channelId, aidaId])
     for (const peer of peers.rows) {
-      const reusable = await client.query<{ definition_version_id: string }>(`SELECT definition_version_id FROM channel_agent_bindings WHERE company_id=$1 AND agent_id=$2 AND status='ACTIVE' ORDER BY created_at DESC,id LIMIT 1`, [actor.companyId, peer.id])
+      const reusable = await client.query<{ definition_version_id: string }>(`SELECT latest.id AS definition_version_id FROM channel_agent_bindings b JOIN agent_definition_versions current ON current.company_id=b.company_id AND current.id=b.definition_version_id JOIN LATERAL (SELECT v.id FROM agent_definition_versions v WHERE v.company_id=current.company_id AND v.definition_id=current.definition_id ORDER BY v.version DESC LIMIT 1) latest ON TRUE WHERE b.company_id=$1 AND b.agent_id=$2 AND b.status='ACTIVE' ORDER BY b.created_at DESC,b.id LIMIT 1`, [actor.companyId, peer.id])
       let peerDefinition = reusable.rows[0]?.definition_version_id
       if (!peerDefinition) {
         const existingDefinition = await client.query<{ id: string }>(`SELECT id FROM agent_definition_versions WHERE company_id=$1 AND definition_id=$2 ORDER BY version DESC LIMIT 1`, [actor.companyId, `cumora.agent:${peer.id}`])

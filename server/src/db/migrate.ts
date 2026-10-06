@@ -64,6 +64,7 @@ import { CHANNEL_TASK_EXECUTION_SQL, channelTaskExecutionChecksum } from './migr
 import { TASK_EXECUTOR_FENCES_SQL, taskExecutorFencesChecksum } from './migrations/0016-task-executor-fences.js'
 import { TASK_LIFECYCLE_SQL, taskLifecycleChecksum } from './migrations/0018-task-lifecycle.js'
 import { TASK_DEFINITION_SNAPSHOTS_SQL, taskDefinitionSnapshotsChecksum } from './migrations/0019-task-definition-snapshots.js'
+import { CONFIGURATION_WORKBENCH_SQL, configurationWorkbenchChecksum } from './migrations/0020-configuration-workbench.js'
 import { TASK_SOURCE_AND_GOVERNANCE_LINKS_SQL, taskSourceAndGovernanceLinksChecksum } from './migrations/0017-task-source-and-governance-links.js'
 
 /** Frozen data backfill embedded in migration 0001. Exported so its behavior
@@ -2699,6 +2700,8 @@ const VERSIONED_MIGRATIONS: readonly VersionedMigration[] = [
     up: async(client) => { await client.query(TASK_LIFECYCLE_SQL) } },
   { ...SCHEMA_MIGRATIONS[18], sourceChecksum: taskDefinitionSnapshotsChecksum(), transactional: true,
     up: async(client) => { await client.query(TASK_DEFINITION_SNAPSHOTS_SQL) } },
+  { ...SCHEMA_MIGRATIONS[19], sourceChecksum: configurationWorkbenchChecksum(), transactional: true,
+    up: async(client) => { await client.query(CONFIGURATION_WORKBENCH_SQL) } },
 ]
 
 export async function applyPendingMigration(

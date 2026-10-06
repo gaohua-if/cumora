@@ -46,7 +46,7 @@ export class TaskExecutionService {
     if (!task || task.status !== 'OPEN' || task.scope_revision !== context.scope_revision || task.input_revision !== context.input_revision) throw new TaskError('TASK_CONTEXT_REVOKED', 403)
     await this.tasks.member(client, { companyId, id: task.creator_principal_id }, task.conversation_id)
     const binding = await this.tasks.binding(client, companyId, task.conversation_id, context.binding_id)
-    if (binding.agent_id !== context.agent_id || binding.version !== context.binding_version || binding.runtime_assignment_id !== context.assignment_id || binding.engine !== context.runtime.engine) throw new TaskError('TASK_CONTEXT_REVOKED', 403)
+    if (binding.agent_id !== context.agent_id || (binding.eligibility_version ?? binding.version) !== context.binding_version || binding.runtime_assignment_id !== context.assignment_id || binding.engine !== context.runtime.engine) throw new TaskError('TASK_CONTEXT_REVOKED', 403)
     await checkTaskGovernance(client, task, binding)
     if (binding.computer_id && binding.computer_kind !== 'cloud') {
       const admitted = await client.query(`SELECT 1 FROM task_runtime_admissions WHERE company_id=$1 AND computer_id=$2 AND engine=$3 AND revoked_at IS NULL FOR SHARE`, [companyId, binding.computer_id, binding.engine])

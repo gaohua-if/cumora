@@ -1,0 +1,49 @@
+{
+  "timestamp": "2026-10-05T09:54:32.081Z",
+  "companyId": "co-a09a2bc0-f",
+  "channelId": "g-225aafa5",
+  "agent": {
+    "id": "aida-lnn7",
+    "model": "gpt-6-sol",
+    "fastModel": "gpt-6-luna"
+  },
+  "message": {
+    "id": "m-c07e2fa8-070b-4060-a6bc-70faafb5b060",
+    "sequence": 1,
+    "created_at": "2026-10-05T09:50:20.970Z"
+  },
+  "answer": {
+    "id": "m-e160d4bf-c2cb-4f2f-9819-c550655219ce",
+    "body": "LOCAL_CODEX_OK 42",
+    "sequence": 2
+  },
+  "runs": [
+    {
+      "id": "run-a160cfc4-d2e6-402c-bfe4-6209f2f50f44",
+      "status": "completed",
+      "model": "gpt-6-sol",
+      "error": null,
+      "input_tokens": 5789,
+      "output_tokens": 250
+    }
+  ],
+  "calls": [
+    {
+      "run_id": "run-a160cfc4-d2e6-402c-bfe4-6209f2f50f44",
+      "purpose": "agent-turn",
+      "source": "byoa-codex",
+      "model": "gpt-6-sol",
+      "status": "ok",
+      "input_tokens": 5789,
+      "output_tokens": 250
+    }
+  ],
+  "realModelInference": true,
+  "imageId": "sha256:db5b4a33c9207df7a50da269f6474918646f68a51c94e3520be791ddd1214bc5",
+  "sourceHashes": {
+    "server/src/agents/computer/codex-model-defaults.ts": "79f402723ba8471dc83e477f55a34ab6dc8706ff17d58c0b418f5bf9282c2cdc",
+    "server/src/agents/computer/model-catalog.ts": "eb03ae14a23edd9eb8c9ccc1a5cee2288e7b2916902811ece600df10ff7b4ced",
+    "server/src/agents/computer/registry.ts": "bbf8b85687b073e50ea0c225bbcfe271e783e00d9bd83feeb70294b054a16ed3",
+    "scripts/verify-aida-local-codex.mjs": "e3572dcd6399433ac4aa6be123329baa30376e82aaef185eb09f7c8db53aed17"
+  }
+}

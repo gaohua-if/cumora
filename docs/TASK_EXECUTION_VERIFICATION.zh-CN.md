@@ -96,4 +96,4 @@ PostgreSQL、Redis 断开/恢复、HTTP/JWT、真实 WS ticket/转发、Codex �
 
 实现追加 migrations 15–19，既有 1–14 未改。服务支持 schema 14..19；TASK 要求 19，启动只检查不迁移。Task 创建固定 Definition/configuration；新 Binding 版本只影响新 Task。旧会话/participant/message/card ID 与治理审核保持原规则。原有 README、探索文档及其他工作区修改保留。
 
-已检查新增 Task 服务、公共/运行时入口、旧执行与回滚门控、桌面/移动共用组件、迁移、测试、脚本和 OpenSpec artifacts；`git diff --check` 通过。所有实现及必需验收项均通过，任务记录见 [tasks.md](../openspec/changes/introduce-channel-task-execution/tasks.md)。完成状态不会自动发布、提交或归档。
+已检查新增 Task 服务、公共/运行时入口、旧执行与回滚门控、桌面/移动共用组件、迁移、测试、脚本和 OpenSpec artifacts；`git diff --check` 通过。所有实现及必需验收项均通过，任务记录见 [tasks.md](../openspec/changes/archive/2026-10-06-introduce-channel-task-execution/tasks.md)。2026-10-06 按用户要求同步主规格并归档；历史验收 JSON 的源码路径保留验收时的位置，对应文件现位于该归档目录。
