@@ -4,9 +4,23 @@ import { mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { EngineSessionStore, sessionIdPreview } from '../agents/computer/session-store.js'
+import { EngineSessionStore, sessionIdPreview, nativeThreadSessionScope } from '../agents/computer/session-store.js'
 
 const roots: string[] = []
+
+test('native thread identities isolate every placement dimension and restore after switching or restart', async () => {
+  const root = await temporaryRoot()
+  const identity = { server: 'http://server', company: 'workspace', channel: 'channel', thread: 'thread-one', agent: 'aida', engine: 'codex' as const, provider: 'login', model: 'account-model', prompt: 'coordinate' }
+  const first = nativeThreadSessionScope(identity)
+  const second = nativeThreadSessionScope({ ...identity, thread: 'thread-two' })
+  const one = new EngineSessionStore(root, identity.agent, 'codex', first)
+  const two = new EngineSessionStore(root, identity.agent, 'codex', second)
+  await one.save('first-native-session'); await two.save('second-native-session')
+  assert.equal(await new EngineSessionStore(root, identity.agent, 'codex', nativeThreadSessionScope(identity)).load(), 'first-native-session')
+  assert.equal(await two.load(), 'second-native-session')
+  for (const key of ['server', 'company', 'channel', 'thread', 'agent', 'provider', 'model', 'prompt'] as const) assert.notEqual(nativeThreadSessionScope({ ...identity, [key]: identity[key] + '-other' }), first)
+  assert.notEqual(nativeThreadSessionScope({ ...identity, engine: 'claude' }), first)
+})
 
 async function temporaryRoot(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'cumora-session-store-'))

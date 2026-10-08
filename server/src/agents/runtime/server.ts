@@ -20,6 +20,9 @@ import { json, type NextFunction, type Request, type Response, Router } from 'ex
 import { publicBodyParserError } from '../../body-parser-errors.js'
 import { AGENDA_CLASSIFIER_ERROR, claimStallNudge, classifyAgendaActionable, gatherAgentAgenda, renderAgendaBrief } from '../agenda.js'
 import { runCli } from '../cli.js'
+import { threadService } from '../../tasks/threads.js'
+import { threadScope, type ThreadScope } from '../../tasks/thread-scope.js'
+import { TaskError } from '../../tasks/contracts.js'
 import { buildTriageRequest, gatherClaimsByConvo } from '../inbox-triage.js'
 import {
   createAgentRun,
@@ -115,7 +118,11 @@ async function authMiddleware(req: RuntimeRequest, res: Response, next: NextFunc
     res.status(403).json({ error: 'TASK_CONTEXT_REQUIRED' })
     return
   }
-  next()
+  if (claims.threadId) {
+    const scope: ThreadScope = { threadId: claims.threadId, round: claims.threadRound!, agentId: claims.sub, companyId: claims.companyId }
+    if (!await threadService.authorize(scope) && !/^\/runs\/[^/]+\/finish$/.test(req.path)) { res.status(409).json({ error: 'STALE_THREAD_CONTEXT' }); return }
+    threadScope.run(scope, next)
+  } else next()
 }
 
 function withAgent(
@@ -128,6 +135,7 @@ function withAgent(
     try {
       await handler(claims as AuthorizedAgentRuntimeClaims, req, res)
     } catch (err) {
+      if (err instanceof TaskError) { res.status(err.status).json({ error: err.code }); return }
       const msg = err instanceof Error ? err.message : String(err)
       console.error(`[runtime] ${req.method} ${req.path} failed`, msg)
       res.status(500).json({ error: 'runtime request failed' })
@@ -194,6 +202,15 @@ runtimeRouter.post('/cli', withAgent(async (c, req, res) => {
   const body = req.body as { argv?: unknown; governanceContext?: { actionId?: unknown; attemptId?: unknown; mandateId?: unknown; mandateVersion?: unknown; planEpoch?: unknown; leaseGeneration?: unknown } } | undefined
   const argv = Array.isArray(body?.argv) ? body!.argv.filter((x): x is string => typeof x === 'string') : null
   if (!argv) { res.status(400).json({ error: 'argv (string[]) required' }); return }
+  const scoped = threadScope.getStore()
+  if (scoped) {
+    const result = await threadService.cli(scoped, argv)
+    if (result) { res.json(result); return }
+    // Conversation reads and writes cannot escape this task via the old CLI.
+    if (['glance','dm','poll','whisper','claim','read'].includes(argv[0] ?? '')) {
+      res.status(409).json({ error: 'Use thread status, inbox, messages, reply, result or summary in this thread.' }); return
+    }
+  }
 
   // Governed writes must carry the complete execution context. Legacy
   // collaboration cards remain compatible; governed cards fail closed rather
@@ -268,7 +285,7 @@ runtimeRouter.get('/inbox', withAgent(async (c, req, res) => {
   // "1" via maybeSteer's loadInbox, baseline advanced past Iris's seq,
   // Bram's preflight then saw nothing newer and posted a duplicate "1").
   const probe = String(req.query.probe ?? '').trim() === '1'
-  if (!probe && rows.length > 0) {
+  if (!probe && rows.length > 0 && !c.threadId) {
     const perConvoMaxSeq = new Map<string, number>()
     for (const r of rows) {
       const cur = perConvoMaxSeq.get(r.conversation_id) ?? 0
@@ -278,6 +295,25 @@ runtimeRouter.get('/inbox', withAgent(async (c, req, res) => {
     await Promise.all([...perConvoMaxSeq.entries()].map(([cid, seq]) => recordSeen(c.sub, cid, seq)))
   }
   res.json({ rows })
+}))
+
+runtimeRouter.get('/threads/next', withAgent(async (c, _req, res) => {
+  res.json({ work: await threadService.next(c.companyId, c.sub) })
+}))
+runtimeRouter.get('/threads/brief', withAgent(async (_c, _req, res) => {
+  const scope = threadScope.getStore()
+  if (!scope) { res.status(400).json({ error: 'thread scope required' }); return }
+  const status = await threadService.cli(scope, ['thread', 'status'])
+  const messages = await threadService.cli(scope, ['inbox'])
+  res.json({ text: status!.text + '\n' + messages!.text })
+}))
+
+runtimeRouter.post('/threads/session', withAgent(async (c, req, res) => {
+  const scope = threadScope.getStore()
+  const body = req.body as { sessionId?: string; engine?: string; sessionScope?: string }
+  if (!scope || typeof body.sessionId !== 'string' || body.sessionId.length > 300 || typeof body.engine !== 'string' || typeof body.sessionScope !== 'string') { res.status(400).json({ error: 'invalid thread session' }); return }
+  await pool.query(`UPDATE thread_work SET engine_session_id=$4,engine=$5,session_scope=$6 WHERE thread_id=$1 AND round=$2 AND agent_id=$3`, [scope.threadId, scope.round, c.sub, body.sessionId, body.engine, body.sessionScope])
+  res.json({ ok: true })
 }))
 
 // BYOA: build the triage request server-side (we have the DB for inbox+context)
@@ -513,6 +549,8 @@ runtimeRouter.post('/runs', withAgent(async (c, req, res) => {
   if (!gate.authorized || !gate.result) {
     res.status(403).json({ error: 'agent does not belong to token tenant' }); return
   }
+  const scope = threadScope.getStore()
+  if (scope) await threadService.start(scope, gate.result)
   res.json({ runId: gate.result })
 }))
 
@@ -806,6 +844,8 @@ runtimeRouter.post('/runs/:runId/finish', withAgent(async (c, req, res) => {
     }, client),
   })
   if (!gate.authorized || !gate.result) { res.status(404).json({ error: 'agent run not found' }); return }
+  const scope = threadScope.getStore()
+  if (scope) await threadService.finish(scope, body.status === 'failed' ? body.error || body.summary || 'Agent 执行失败' : null, runId)
   res.json({ ok: true })
 }))
 
@@ -969,6 +1009,13 @@ runtimeRouter.post('/conversation/mark-read', withAgent(async (c, req, res) => {
   const body = req.body as { conversationId?: string; upToMessageId?: string } | undefined
   if (!body?.conversationId || !body.upToMessageId) {
     res.status(400).json({ error: 'conversationId and upToMessageId required' }); return
+  }
+  const scope = threadScope.getStore()
+  if (scope) {
+    const message = (await pool.query(`SELECT sequence FROM messages WHERE id=$1 AND company_id=$2 AND conversation_id=$3 AND thread_id=$4`, [body.upToMessageId, c.companyId, body.conversationId, scope.threadId])).rows[0]
+    if (!message) { res.status(409).json({ error: 'THREAD_MESSAGE_MISMATCH' }); return }
+    await pool.query(`INSERT INTO thread_reads(thread_id,agent_id,sequence) VALUES($1,$2,$3) ON CONFLICT(thread_id,agent_id) DO UPDATE SET sequence=GREATEST(thread_reads.sequence,excluded.sequence)`, [scope.threadId, c.sub, message.sequence])
+    res.json({ ok: true }); return
   }
   const gate = await withRuntimeMessageReadAuthorization({
     agentId: c.sub,

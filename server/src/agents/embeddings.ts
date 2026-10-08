@@ -24,7 +24,7 @@ const EMBED_DIM = 1536
  *  recent inbox messages. */
 const MAX_INPUT_CHARS = 8000
 
-const client = new OpenAI({ apiKey: env.OPENAI_API_KEY })
+let client: OpenAI | null = null
 
 /** Test-only override. When set, every {@link embedText} call returns
  *  whatever this function produces — bypassing the real OpenAI
@@ -43,7 +43,9 @@ export async function embedText(text: string): Promise<string | null> {
   const trimmed = (text ?? '').trim()
   if (!trimmed) return null
   if (testEmbedOverride) return testEmbedOverride(trimmed)
+  if (env.LOCAL_ONLY || !env.OPENAI_API_KEY) return null
   try {
+    client ??= new OpenAI({ apiKey: env.OPENAI_API_KEY })
     const resp = await client.embeddings.create({
       model: EMBED_MODEL,
       input: trimmed.length > MAX_INPUT_CHARS ? trimmed.slice(0, MAX_INPUT_CHARS) : trimmed,
@@ -78,6 +80,7 @@ export async function hasPgVector(): Promise<boolean> {
  *  so a large agent (thousands of memories) doesn't burst OpenAI's
  *  rate limit. Fire-and-forget at server boot. */
 export async function backfillMemoryEmbeddings(opts: { batchSize?: number; delayMs?: number } = {}): Promise<void> {
+  if (env.LOCAL_ONLY || !env.OPENAI_API_KEY) return
   const batchSize = opts.batchSize ?? 50
   const delayMs = opts.delayMs ?? 80
   if (!(await hasPgVector())) return

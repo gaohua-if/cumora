@@ -140,6 +140,7 @@ export async function gateSyntheticWake(args: {
    *  starved of context and doesn't reflexively kill genuine initiative. */
   signals: string
 }): Promise<{ act: boolean; reason: string; note: string }> {
+  if (env.LOCAL_ONLY) return { act: false, reason: 'Server classifiers unavailable in local-only mode', note: '' }
   const kindLabel = args.kind === 'idle' ? 'an idle heartbeat'
     : args.kind === 'background_scan' ? 'an internal background scan'
     : 'a poll update it is watching'

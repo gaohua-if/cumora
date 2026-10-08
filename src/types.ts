@@ -296,6 +296,7 @@ export interface Message {
   /** Reply-to / quote pointer: the id of another message in this same
    *  conversation that this one is quoting. Null for non-reply messages. */
   quotedMessageId?: string
+  threadId?: string
   /** Inlined summary of the quoted-original, resolved server-side so the
    *  renderer can draw the quote card without a second roundtrip. Missing
    *  when the original was deleted — bubble renders "[deleted]". */

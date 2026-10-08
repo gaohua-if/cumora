@@ -7,13 +7,32 @@ import { authorizeGovernedModelCall, settleGovernedModelCall } from '../governan
 import { TaskError, hashContent, canonicalJson, taskLocalToolsAllowed } from './contracts.js'
 import { TaskExecutionService, type Claim, type ResolvedTask } from './execution.js'
 import type { TaskService } from './service.js'
+import { listAgentsForComputer } from '../agents/computer/registry.js'
+import { env } from '../env.js'
 
-export function localModelRequest(context: ResolvedTask, value: unknown): ResponseCreateParamsNonStreaming {
+/** Both runtime context and authorized requests resolve the same local model.
+ * Account credentials stay entirely on the paired computer. */
+export async function taskRuntimeModel(tasks: TaskService, context: ResolvedTask, contextId: string): Promise<string> {
+  const result = await tasks.pool.query(`SELECT x.computer_id,a.capabilities->>'modelProvider' AS provider
+    FROM task_execution_contexts x LEFT JOIN task_runtime_admissions a ON a.company_id=x.company_id
+      AND a.computer_id=x.computer_id AND a.engine='codex' AND a.revoked_at IS NULL
+    WHERE x.company_id=$1 AND x.id=$2 AND x.binding_id=$3 AND x.revoked_at IS NULL`, [context.task.company_id, contextId, context.bindingId])
+  const local = result.rows[0]
+  if (local?.provider === 'codex-login') {
+    const agent = (await listAgentsForComputer(local.computer_id)).find((a) => a.id === context.agentId)
+    if (!agent?.model) throw new TaskError('LOCAL_MODEL_NOT_CONFIGURED')
+    return enforceModelPolicy(agent.model, 'agent-turn')
+  }
+  if (env.LOCAL_ONLY) throw new TaskError('SERVER_MODEL_UNAVAILABLE', 503)
+  return enforceModelPolicy(realTaskModel(), 'agent-turn')
+}
+
+export function localModelRequest(context: ResolvedTask, value: unknown, model = enforceModelPolicy(realTaskModel(), 'agent-turn')): ResponseCreateParamsNonStreaming {
   const request = value as Record<string, unknown> | null
   if (!request || typeof request !== 'object' || !Array.isArray(request.input) || Buffer.byteLength(JSON.stringify(request)) > 2_000_000) throw new TaskError('RUNTIME_MODEL_INPUT_DENIED', 403)
   if (request.previous_response_id != null && request.previous_response_id !== '') throw new TaskError('RUNTIME_PREVIOUS_RESPONSE_DENIED', 403)
   if (request.tools !== undefined && !taskLocalToolsAllowed(request.tools)) throw new TaskError('RUNTIME_MODEL_TOOL_DENIED', 403)
-  return { model: enforceModelPolicy(realTaskModel(), 'agent-turn'), stream: false, store: false,
+  return { model: enforceModelPolicy(model, 'agent-turn'), stream: false, store: false,
     input: request.input as ResponseCreateParamsNonStreaming['input'], tools: request.tools as ResponseCreateParamsNonStreaming['tools'],
     instructions: `${context.instructions}\nExecute only task ${context.task.id}: ${context.task.objective}\n${typeof request.instructions === 'string' ? request.instructions : ''}`,
     max_output_tokens: 16000 }
@@ -24,6 +43,7 @@ export async function authorizeLocalModel(tasks: TaskService, companyId: string,
   const execution = new TaskExecutionService(tasks)
   const context = await execution.context(companyId, claim)
   const request = localModelRequest(context, value)
+  request.model = await taskRuntimeModel(tasks, context, claim.contextId)
   const id = randomUUID()
   const runId = `task-local:${claim.id}`
   await tasks.transaction(companyId, async client => {

@@ -1,0 +1,111 @@
+{
+  "timestamp": "2026-10-06T09:04:29.367Z",
+  "runs": [
+    {
+      "id": "run-6fa6dacb-df46-4979-a30a-d7cd8228d3b1",
+      "agent_id": "aida-lnn7",
+      "status": "completed",
+      "model": "gpt-6-sol",
+      "error": null
+    },
+    {
+      "id": "run-2a90a952-acff-4509-8776-1704771d1767",
+      "agent_id": "aida-lnn7",
+      "status": "completed",
+      "model": "gpt-6-sol",
+      "error": null
+    },
+    {
+      "id": "run-3e7f623e-6ea2-4933-b721-3186b34c657b",
+      "agent_id": "agent",
+      "status": "completed",
+      "model": "gpt-6-sol",
+      "error": null
+    },
+    {
+      "id": "run-9f43ee58-6f36-41e1-acbf-e0f6102bf9fd",
+      "agent_id": "aida-lnn7",
+      "status": "completed",
+      "model": "gpt-6-sol",
+      "error": null
+    },
+    {
+      "id": "run-94b404fa-f001-49af-98dc-c27769a2194a",
+      "agent_id": "agent",
+      "status": "completed",
+      "model": "gpt-6-sol",
+      "error": null
+    },
+    {
+      "id": "run-a25c86ff-bdc2-4f34-936d-2b25ab1f2e97",
+      "agent_id": "aida-lnn7",
+      "status": "completed",
+      "model": "gpt-6-sol",
+      "error": null
+    }
+  ],
+  "calls": [
+    {
+      "agent_id": "aida-lnn7",
+      "run_id": "run-6fa6dacb-df46-4979-a30a-d7cd8228d3b1",
+      "purpose": "agent-turn",
+      "source": "byoa-codex",
+      "model": "gpt-6-sol",
+      "status": "ok",
+      "input_tokens": 1345,
+      "output_tokens": 159
+    },
+    {
+      "agent_id": "aida-lnn7",
+      "run_id": "run-2a90a952-acff-4509-8776-1704771d1767",
+      "purpose": "agent-turn",
+      "source": "byoa-codex",
+      "model": "gpt-6-sol",
+      "status": "ok",
+      "input_tokens": 1295,
+      "output_tokens": 135
+    },
+    {
+      "agent_id": "agent",
+      "run_id": "run-3e7f623e-6ea2-4933-b721-3186b34c657b",
+      "purpose": "agent-turn",
+      "source": "byoa-codex",
+      "model": "gpt-6-sol",
+      "status": "ok",
+      "input_tokens": 1748,
+      "output_tokens": 319
+    },
+    {
+      "agent_id": "aida-lnn7",
+      "run_id": "run-9f43ee58-6f36-41e1-acbf-e0f6102bf9fd",
+      "purpose": "agent-turn",
+      "source": "byoa-codex",
+      "model": "gpt-6-sol",
+      "status": "ok",
+      "input_tokens": 1698,
+      "output_tokens": 202
+    },
+    {
+      "agent_id": "agent",
+      "run_id": "run-94b404fa-f001-49af-98dc-c27769a2194a",
+      "purpose": "agent-turn",
+      "source": "byoa-codex",
+      "model": "gpt-6-sol",
+      "status": "ok",
+      "input_tokens": 1811,
+      "output_tokens": 175
+    },
+    {
+      "agent_id": "aida-lnn7",
+      "run_id": "run-a25c86ff-bdc2-4f34-936d-2b25ab1f2e97",
+      "purpose": "agent-turn",
+      "source": "byoa-codex",
+      "model": "gpt-6-sol",
+      "status": "ok",
+      "input_tokens": 1648,
+      "output_tokens": 138
+    }
+  ],
+  "peerMessagesAfterCompletion": [],
+  "hasCompletionInPeerInbox": false
+}

@@ -1690,7 +1690,12 @@ function ReplyIconButton({ msg }: { msg: Message }) {
   return (
     <button
       type="button"
-      onClick={() => setReplyingTo(msg.conversationId, msg.id)}
+      onClick={() => {
+        if (msg.threadId) {
+          useApp.getState().openThreadView(msg.conversationId, msg.threadId)
+          setReplyingTo(`${msg.conversationId}::thread::${msg.threadId}`, msg.id)
+        } else setReplyingTo(msg.conversationId, msg.id)
+      }}
       className="w-6 h-6 rounded-full hover:bg-sky2-50 grid place-items-center text-ink-400 hover:text-skype-deep"
       title={t('chat.reply')}
       aria-label={t('chat.replyToMessage')}
@@ -1850,17 +1855,17 @@ function MessageRowImpl({ msg, author, delay = 0, animate = true }: MessageRowPr
           </div>
         )}
 
-        {(msg.replyCount ?? 0) > 0 && (
+        {((msg.replyCount ?? 0) > 0 || msg.threadId === msg.id) && (
           <button
             type="button"
-            onClick={() => openThreadView(msg.conversationId, msg.id)}
+            onClick={() => openThreadView(msg.conversationId, msg.threadId ?? msg.id)}
             className="mt-1 text-[11.5px] text-skype-deep hover:underline flex items-center gap-1"
           >
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="9 17 4 12 9 7" />
               <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
             </svg>
-            {msg.replyCount} {msg.replyCount === 1 ? 'reply' : 'replies'}
+            {msg.replyCount ? `${msg.replyCount} ${msg.replyCount === 1 ? 'reply' : 'replies'}` : '查看任务 thread'}
           </button>
         )}
 

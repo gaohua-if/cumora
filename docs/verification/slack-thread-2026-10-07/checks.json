@@ -1,0 +1,45 @@
+{
+  "unit": {
+    "passed": 18,
+    "failed": 0,
+    "files": [
+      "tests/thread-message-store.test.ts",
+      "tests/reply-count.test.ts"
+    ]
+  },
+  "threadIntegration": {
+    "passed": 7,
+    "failed": 0,
+    "file": "server/src/__integration__/thread-agent-coordination.test.ts",
+    "execution": "Original five tests passed together; new HTTP root pagination test and local attachment reader test each passed in focused runs."
+  },
+  "protectedTaskRegression": {
+    "passed": 3,
+    "failed": 0,
+    "selection": [
+      "task ingress is idempotent",
+      "revoked sources block drive",
+      "cloud task loop uses only its approved context"
+    ]
+  },
+  "serverTypecheck": "passed",
+  "frontendTypecheck": "passed",
+  "productionBuild": "passed; existing bundle size/dynamic import warnings",
+  "targetedLint": {
+    "files": 14,
+    "result": "passed"
+  },
+  "architectureGuards": {
+    "bigBrain": "passed",
+    "trackedLlm": "passed",
+    "engineRegistry": "passed"
+  },
+  "realBrowser": {
+    "passed": 7,
+    "failed": 0,
+    "evidence": "acceptance.json"
+  },
+  "gitDiffCheck": "passed",
+  "conceptDataFlowDocument": "unchanged",
+  "scope": "Focused verification, not repository-wide full test run"
+}

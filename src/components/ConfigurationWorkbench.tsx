@@ -1541,6 +1541,13 @@ export function ConfigurationWorkbench({
         )}
       </aside>
       <main className="cwb-main">
+        {data?.runtime?.mode === 'local-only' && (
+          <div className="cwb-runtime" role="status">
+            <strong>本地运行模式 · 无需服务端 API Key</strong>
+            <p>Agent 需要在线的本地计算机及其 Codex / Claude 登录态。普通群聊请求由 Aida 或群聊默认负责人接收，再决定分工；使用 @成员 指定负责人，@all 通知全组。</p>
+            <p>服务端模型推理、生成头像和向量检索当前不可用；记忆仍按置顶和近期内容读取。</p>
+          </div>
+        )}
         <header>
           <p className="cwb-muted">工作区 / {categories[category]}</p>
           <h2>{draft.name ?? categories[category]}</h2>

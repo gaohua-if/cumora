@@ -46,6 +46,7 @@ import OpenAI from 'openai'
 import { pool } from './db/pool.js'
 import { deepseekResponsesCreate, isDeepSeekModel } from './deepseek.js'
 import { env } from './env.js'
+import { requireServerInference, ServerModelUnavailableError } from './model-availability.js'
 import { isNovitaModel, novitaResponsesShim } from './novita.js'
 import { isOrcaRouterModel, orcarouterResponsesCreate } from './orcarouter.js'
 import { sub2apiConfigured, sub2apiOpenAIBaseURL } from './sub2api.js'
@@ -152,7 +153,7 @@ function withProviderRouting(client: OpenAI): OpenAI {
               }
               warnProviderUnconfiguredOnce('OrcaRouter', args.model)
             } else if (isDeepSeekModel(args.model)) {
-              // OPENAI_API_KEY is required at boot and may intentionally hold
+              // In server API mode OPENAI_API_KEY may intentionally hold
               // a DeepSeek key; DEEPSEEK_API_KEY is only an optional override.
               return deepseekResponsesCreate(args, opts)
             }
@@ -166,8 +167,9 @@ function withProviderRouting(client: OpenAI): OpenAI {
 
 /** Build (and cache) the OpenAI client for this tenant. Async because
  *  resolving the tenant's owner_user_id + sub2api_api_key is a DB hop.
- *  Always returns a working client — never throws on lookup failure. */
+ *  Local-only mode rejects before credential lookup; API mode falls back on lookup failure. */
 export async function getLlmClient(tenant: string | null): Promise<OpenAI> {
+  requireServerInference()
   if (testLlmOverride) return testLlmOverride(tenant)
   // No tenant context → legacy.
   if (!tenant || !sub2apiConfigured()) return withProviderRouting(legacyClient())
@@ -216,6 +218,7 @@ export function invalidateLlmClient(tenant: string): void {
 
 let _legacy: OpenAI | null = null
 function legacyClient(): OpenAI {
+  if (!env.OPENAI_API_KEY) throw new ServerModelUnavailableError()
   if (!_legacy) _legacy = new OpenAI({
     apiKey: env.OPENAI_API_KEY,
     maxRetries: SDK_MAX_RETRIES,

@@ -1,3 +1,4 @@
+import { threadService } from '../tasks/threads.js'
 import { TaskExecutionService } from '../tasks/execution.js'
 import { Router, json, type Request, type Response, type NextFunction } from 'express'
 import { isProviderProfileId } from '../agents/computer/provider-profiles.js'
@@ -18,6 +19,7 @@ import { enqueueWorkspaceCleanup, nudgeWorkspaceCleanupWorker } from '../workspa
 import { collectDocumentStorageKeys, evictDocumentRoom } from '../documents/rooms.js'
 import { createPoll, castVote, closePoll, PollError } from '../polls.js'
 import { env } from '../env.js'
+import { requireServerInference, ServerModelUnavailableError } from '../model-availability.js'
 import { publicBodyParserError } from '../body-parser-errors.js'
 import { startConvene } from '../agents/convene.js'
 import { ensureDirectConversation } from '../agents/private_chat.js'
@@ -529,6 +531,10 @@ function safe(handler: (req: Request & AuthedRequest, res: Response) => Promise<
  *  async route's rejection bubbles here in Express 5. HttpError → its status
  *  code; anything else → 500 with a generic message (real cause logged). */
 function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction): void {
+  if (err instanceof ServerModelUnavailableError) {
+    res.status(err.status).json({ error: err.code })
+    return
+  }
   if (err instanceof HttpError) {
     res.status(err.status).json({ error: err.message })
     return
@@ -1655,7 +1661,7 @@ api.post('/computers/heartbeat', safe(async (req, res) => {
 // Mint a per-agent runtime JWT for the calling computer (daemon refresh loop).
 api.post('/agents/:id/runtime-token', safe(async (req, res) => {
   const { computerId } = await requireDevice(req)
-  const minted = await mintAgentRuntimeToken({ computerId, agentId: String(req.params.id), providerProfile: readProviderProfile(req.body?.providerProfile) })
+  const minted = await mintAgentRuntimeToken({ computerId, agentId: String(req.params.id), providerProfile: readProviderProfile(req.body?.providerProfile), threadId: req.body?.threadId, threadRound: req.body?.threadRound })
   if (!minted) throw new HttpError(403, 'agent not assigned to this computer')
   res.json(minted)
 }))
@@ -3437,6 +3443,7 @@ export async function generateAndPersistAvatar(args: {
   const a = rows[0]
   if (!a) throw new HttpError(404, 'not found')
   if (a.kind !== 'agent') throw new HttpError(400, 'avatar generation is only for agents')
+  requireServerInference()
 
   const styleHint = (a.system_prompt ?? '').slice(0, 500)
   // Gender inference is async — call before the visual signature so we pick
@@ -3551,6 +3558,7 @@ api.post('/agents/:id/avatar/generate', async (req, res) => {
     const { url } = await generateAndPersistAvatar({ agentId: req.params.id, tenant })
     res.json({ url })
   } catch (e) {
+    if (e instanceof ServerModelUnavailableError) { res.status(e.status).json({ error: e.code }); return }
     if (e instanceof HttpError) { res.status(e.status).json({ error: e.message }); return }
     const msg = e instanceof Error ? e.message : String(e)
     res.status(502).json({ error: `image generation failed: ${msg}` })
@@ -4144,6 +4152,11 @@ api.get('/conversations/:id/messages', async (req, res) => {
       params.push(before)
       beforeClause = ` AND m.sequence < $${params.length}`
     }
+    if (req.query.view === 'channel') beforeClause += ' AND (m.thread_id IS NULL OR m.thread_id=m.id)'
+    if (typeof req.query.messageId === 'string') {
+      params.push(req.query.messageId)
+      beforeClause += ` AND m.id = $${params.length}`
+    }
     params.push(limit)
     const limitParam = `$${params.length}`
     const { rows } = await pool.query(
@@ -4170,6 +4183,7 @@ api.get('/conversations/:id/messages', async (req, res) => {
                  GROUP BY option_id
               ) pv
           ), '[]'::jsonb) AS "pollTallies",
+          m.thread_id AS "threadId",
           m.quoted_message_id AS "quotedMessageId",
           m.created_at AS "createdAt",
           -- Email-specific fields, only populated for kind='email'. We
@@ -4256,7 +4270,7 @@ api.get('/conversations/:id/messages', async (req, res) => {
           (
             SELECT COUNT(*)::int
               FROM messages rm
-             WHERE rm.quoted_message_id = m.id
+             WHERE (rm.thread_id = m.id AND rm.id <> m.id) OR (rm.thread_id IS NULL AND rm.quoted_message_id = m.id)
           ) AS "replyCount"
         FROM messages m
         WHERE m.conversation_id = $1${beforeClause}
@@ -4320,6 +4334,7 @@ api.post('/conversations/:id/messages', async (req, res) => {
   const body = String(req.body?.body ?? '').trim()
   const taskRef = req.body?.taskId
   if (taskRef !== undefined && (typeof taskRef !== 'string' || !taskRef || taskRef.length > 200)) { res.status(400).json({ error: 'INVALID_TASK_REFERENCE' }); return }
+  let resolvedThreadId: string | null = null
   let resolvedTaskId: string | null = null
   const rawAttachment = req.body?.attachment
   let attachment: AttachmentPayload | null = null
@@ -4552,6 +4567,7 @@ api.post('/conversations/:id/messages', async (req, res) => {
       : undefined)
     if (!persisted) throw new Error('message insert returned no row')
     insertedNew = Boolean(inserted.rows[0])
+    if (!insertedNew) resolvedThreadId = (await client.query('SELECT thread_id FROM messages WHERE id=$1', [persisted.id])).rows[0]?.thread_id ?? null
     if(!insertedNew && await taskService.mode(tenant)!=='LEGACY'){
       const original=(await client.query(`SELECT body,attachment FROM messages WHERE id=$1 AND company_id=$2`,[persisted.id,tenant])).rows[0]
       if(original.body!==body || canonicalJson(original.attachment)!==canonicalJson(attachment??null))throw new TaskError('INGRESS_KEY_CONFLICT')
@@ -4559,6 +4575,7 @@ api.post('/conversations/:id/messages', async (req, res) => {
     }
     if (insertedNew) {
       if (await taskService.mode(tenant) !== 'LEGACY') resolvedTaskId = await new TaskIngressService(taskService).message(client, { companyId: tenant, id: me }, persisted.id, taskRef)
+      else resolvedThreadId = await threadService.ingress(client, { companyId: tenant, id: me }, persisted.id)
       await client.query(
         `UPDATE conversations SET updated_at = NOW() WHERE id = $1 AND company_id = $2`,
         [id, tenant],
@@ -4572,6 +4589,7 @@ api.post('/conversations/:id/messages', async (req, res) => {
           id: persisted.id, conversationId: id, authorId: me,
           kind: 'text', body, sequence: persisted.sequence, at: new Date().toISOString(),
           attachment: attachment ?? undefined,
+          threadId: resolvedThreadId ?? undefined,
           quotedMessageId: resolvedQuotedId ?? undefined,
           quoted: quotedSummary ?? undefined,
           clientId: clientId ?? undefined,
@@ -4593,7 +4611,7 @@ api.post('/conversations/:id/messages', async (req, res) => {
   deliveryMessageId = messageId
   if (!insertedNew) {
     logDelivery('message.reused', { sequence: persistedSequence })
-    res.status(202).json({ id: messageId, sequence: persistedSequence,taskId:resolvedTaskId??undefined })
+    res.status(202).json({ id: messageId, sequence: persistedSequence,threadId:resolvedThreadId??undefined,taskId:resolvedTaskId??undefined })
     return
   }
   logDelivery('message.committed', { sequence: persistedSequence })
@@ -4637,6 +4655,7 @@ api.post('/conversations/:id/messages', async (req, res) => {
   res.status(202).json({
     id: messageId,
     sequence: persistedSequence,
+    threadId: resolvedThreadId ?? undefined,
     taskId: resolvedTaskId ?? undefined,
     quotedMessageId: resolvedQuotedId ?? undefined,
     quoted: quotedSummary ?? undefined,
@@ -5156,6 +5175,13 @@ api.post('/email/reply/:messageId', async (req, res) => {
  *  GET /conversations/:id/messages so the renderer can reuse its bubble
  *  component. Direct children only — we don't recurse, mirroring how
  *  Telegram / Slack present a single flat thread under one root. */
+api.get('/conversations/:id/threads/:threadId', safe(async (req, res) => {
+  const { companyId } = await requireConversationMember(req, String(req.params.id))
+  const detail = await threadService.detail(companyId, String(req.params.threadId))
+  if (!detail || detail.conversationId !== req.params.id) throw new HttpError(404, 'thread not found')
+  res.json(detail)
+}))
+
 api.get('/conversations/:id/messages/:rootId/replies', async (req, res) => {
   const { id, rootId } = req.params
   try {
@@ -5185,6 +5211,7 @@ api.get('/conversations/:id/messages/:rootId/replies', async (req, res) => {
                  GROUP BY option_id
               ) pv
           ), '[]'::jsonb) AS "pollTallies",
+          m.thread_id AS "threadId",
           m.quoted_message_id AS "quotedMessageId",
           m.created_at AS "createdAt",
           -- mine is derived on the renderer from users; see the main
@@ -5225,7 +5252,7 @@ api.get('/conversations/:id/messages/:rootId/replies', async (req, res) => {
           ) AS "quoted"
         FROM messages m
         WHERE m.conversation_id = $1
-          AND m.quoted_message_id = $2
+          AND ((m.thread_id = $2 AND m.id <> $2) OR (m.thread_id IS NULL AND m.quoted_message_id = $2))
         ORDER BY m.sequence ASC`,
       [id, rootId, tenant],
     )

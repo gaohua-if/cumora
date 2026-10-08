@@ -362,7 +362,7 @@ test('schema 14 preparation remains LEGACY and refuses Task activation without c
   try{
     await legacy.query(`CREATE TABLE schema_migrations (LIKE public.schema_migrations INCLUDING ALL)`)
     await legacy.query(`INSERT INTO schema_migrations SELECT * FROM public.schema_migrations WHERE version<=14`)
-    await verifySchemaCompatibility(legacy)
+    await assert.rejects(verifySchemaCompatibility(legacy), /behind the supported range/)
     const preparation=new TaskService(legacy)
     assert.equal(await preparation.mode('missing-company'),'LEGACY')
     assert.equal(await preparation.protectsLegacy('missing-company'),false)
@@ -598,7 +598,7 @@ test('Codex login model permits enforce admission, tools, receipt deduplication 
   const {task}=await seed()
   const {authorizeLocalModel,settleLocalModel}=await import('../tasks/local-model.js')
   await pool.query(`INSERT INTO computers(id,company_id,name,kind,status,available_engines) VALUES('local-login','task-test','Local login','local','online','["codex"]')`)
-  await pool.query(`UPDATE participants SET computer_id='local-login',engine='codex' WHERE id='agent' AND company_id='task-test'`)
+  await pool.query(`UPDATE participants SET computer_id='local-login',engine='codex',model='gpt-6-sol' WHERE id='agent' AND company_id='task-test'`)
   const workspace=new TaskWorkspaceService(service)
   const admission={computerId:'local-login',engine:'codex',binaryHash:'a'.repeat(64),verificationRef:'unit permit fixture, not native qualification',checks:{filesystem:true,environment:true,process:true,network:true,freshSession:true,stoppedChildren:true}}
   await workspace.admit(principal,admission)
@@ -611,6 +611,10 @@ test('Codex login model permits enforce admission, tools, receipt deduplication 
   await assert.rejects(authorizeLocalModel(service,'task-test','agent',claim,{input:[],previous_response_id:'other-task'}),/RUNTIME_PREVIOUS_RESPONSE_DENIED/)
   const permit=await authorizeLocalModel(service,'task-test','agent',claim,{model:'unapproved-model',input:[{role:'user',content:'Approved task input'}],store:true})
   assert.notEqual(permit.request.model,'unapproved-model');assert.equal(permit.request.store,false)
+  assert.equal(permit.request.model,'gpt-6-sol')
+  const {taskRuntimeModel}=await import('../tasks/local-model.js')
+  assert.equal(await taskRuntimeModel(service,await new TaskExecutionService(service).context('task-test',claim),claim.contextId),permit.request.model)
+  assert.equal((await pool.query(`SELECT references_json->>'model' AS model FROM task_authorization_events WHERE id=$1`,[permit.permitId])).rows[0].model,permit.request.model)
   const receipt={permitId:permit.permitId,status:'ok',usage:{input_tokens:10,output_tokens:5},latencyMs:100}
   await settleLocalModel(service,'task-test','agent',claim,receipt)
   await settleLocalModel(service,'task-test','agent',claim,receipt)

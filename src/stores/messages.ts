@@ -1,7 +1,7 @@
 import { useTaskSelection } from '@/stores/tasks'
 import { create } from 'zustand'
 import type { Message, ReactionEntry } from '@/types'
-import { applyReplyCountDelta } from '@/lib/replyCount'
+import { applyReplyCountDelta, replyRootId, reconcileReplyCount, isChannelMessage } from '@/lib/replyCount'
 import { api, ApiError, ws, type WsEvent, type ApiMessage } from '@/api/client'
 import { useApp } from '@/stores/app'
 import { getMeId } from '@/stores/auth'
@@ -42,6 +42,7 @@ export interface MessagesState {
   firstItemIndex: Record<string, number>
   errors: Record<string, string>
 
+  mergeSnapshot: (id: string, messages: ApiMessage[]) => void
   loadConversation: (id: string) => Promise<void>
   loadOlder: (id: string) => Promise<void>
   reloadConversation: (id: string) => Promise<void>
@@ -255,6 +256,7 @@ function fromApi(m: ApiMessage): Message {
     attachment?: Message['attachment']
     whisperLink?: Message['whisperLink']
     quotedMessageId?: string | null
+    threadId?: string | null
     quoted?: Message['quoted'] | null
     replyCount?: number | null
     email?: Message['email'] | null
@@ -275,6 +277,7 @@ function fromApi(m: ApiMessage): Message {
     taskDelivery: raw.attachment && 'taskId' in raw.attachment ? raw.attachment as unknown as Message['taskDelivery'] : m.taskDelivery,
     whisperLink: raw.whisperLink ?? undefined,
     quotedMessageId: raw.quotedMessageId ?? undefined,
+    threadId: raw.threadId ?? undefined,
     quoted: raw.quoted ?? undefined,
     replyCount: raw.replyCount ?? undefined,
     email: raw.email ?? undefined,
@@ -341,6 +344,10 @@ export const useMessages = create<MessagesState>((set, get) => ({
   firstItemIndex: {},
   errors: {},
 
+  mergeSnapshot(id, messages) {
+    set(s => ({ byConvo: { ...s.byConvo, [id]: mergeFetchedMessages(s.byConvo[id], messages.map(fromApi)) } }))
+  },
+
   async loadConversation(id) {
     const s = get()
     if (s.loaded.has(id) || s.loading.has(id)) return
@@ -349,7 +356,7 @@ export const useMessages = create<MessagesState>((set, get) => ({
       return { loading: new Set(s.loading).add(id), errors: restErrors }
     })
     try {
-      const msgs = await api.getMessages(id, { limit: MESSAGES_PAGE_SIZE })
+      const msgs = await api.getMessages(id, { limit: MESSAGES_PAGE_SIZE, view: 'channel' })
       const normalized = msgs.map(fromApi)
       // Fewer rows than the page cap → we've already got everything older.
       // Equal-to-cap is ambiguous (could be exactly N or N+more) so default
@@ -389,7 +396,7 @@ export const useMessages = create<MessagesState>((set, get) => ({
     try {
       // Reload pulls the same window the initial load did — last N. Older
       // history that was already paged in stays in byConvo via the merge.
-      const msgs = await api.getMessages(id, { limit: MESSAGES_PAGE_SIZE })
+      const msgs = await api.getMessages(id, { limit: MESSAGES_PAGE_SIZE, view: 'channel' })
       const normalized = msgs.map(fromApi)
       const hasMore = normalized.length >= MESSAGES_PAGE_SIZE
       set((s) => ({
@@ -419,7 +426,7 @@ export const useMessages = create<MessagesState>((set, get) => ({
     if (list.length === 0) return
     // Find the oldest known sequence — that's our cursor.
     let oldest: number | null = null
-    for (const m of list) {
+    for (const m of list.filter(isChannelMessage)) {
       const seq = sequenceOf(m)
       if (seq === null) continue
       if (oldest === null || seq < oldest) oldest = seq
@@ -432,7 +439,7 @@ export const useMessages = create<MessagesState>((set, get) => ({
     }
     set((s) => ({ loadingOlder: new Set(s.loadingOlder).add(id) }))
     try {
-      const msgs = await api.getMessages(id, { before: oldest, limit: MESSAGES_PAGE_SIZE })
+      const msgs = await api.getMessages(id, { before: oldest, limit: MESSAGES_PAGE_SIZE, view: 'channel' })
       const normalized = msgs.map(fromApi)
       const hasMore = normalized.length >= MESSAGES_PAGE_SIZE
       set((s) => {
@@ -442,7 +449,7 @@ export const useMessages = create<MessagesState>((set, get) => ({
         // rows (after dedup) all land at the FRONT. Shift firstItemIndex down
         // by that count in the same update as the data, so react-virtuoso
         // keeps the scroll anchored instead of jumping/stalling.
-        const prepended = Math.max(0, merged.length - prev.length)
+        const prepended = Math.max(0, merged.filter(isChannelMessage).length - prev.filter(isChannelMessage).length)
         const base = s.firstItemIndex[id] ?? VIRTUOSO_FIRST_INDEX_BASE
         return {
           byConvo: { ...s.byConvo, [id]: merged },
@@ -508,18 +515,9 @@ export const useMessages = create<MessagesState>((set, get) => ({
           const sb = (b as { sequence?: number }).sequence ?? 0
           return sa - sb
         })
-        // Live replyCount bump on the quoted-original. The server doesn't
-        // publish the new count separately; without this the "N replies" link
-        // on the root would only catch up on a full refetch.
-        //
-        // Only for FRESH arrivals. A `prior` match means this is the server
-        // echo of our own optimistic bubble, and `sendUserMessage` already
-        // counted it at insert time — which it has to, because the author's
-        // echo ALWAYS matches `prior` (by real id once the POST resolves, or
-        // by clientId when the echo wins the race). Counting only here left
-        // the author's own root one short forever, and at zero that hides the
-        // only entrance to the thread they had just created.
-        if (!prior) next = applyReplyCountDelta(next, m.quotedMessageId, 1)
+        // Fresh replies count once; an echo can move the optimistic count to
+        // the server's root, but never count the same clientId twice.
+        next = reconcileReplyCount(next, prior, merged)
         const { [m.id]: _drop, ...rest } = s.streaming
         return {
           streaming: rest,
@@ -652,6 +650,8 @@ export async function sendUserMessage(
   // it in when the server echo arrives. We don't fetch on miss — if the
   // quoted message isn't loaded yet (rare; only happens if the user managed
   // to quote something the store evicted), the server echo will fill it in.
+  const quotedSource = (useMessages.getState().byConvo[convoId] ?? []).find(m => m.id === quotedMessageId)
+  const threadIdHint = quotedSource?.threadId
   let quotedSummary: import('@/types').QuotedSummary | undefined
   if (quotedMessageId) {
     const list = useMessages.getState().byConvo[convoId] ?? []
@@ -688,6 +688,7 @@ export async function sendUserMessage(
         }
       : undefined,
     quotedMessageId: quotedMessageId ?? undefined,
+    threadId: threadIdHint,
     quoted: quotedSummary,
     pending: true,
   }
@@ -706,31 +707,46 @@ export async function sendUserMessage(
       ...s.byConvo,
       [convoId]: applyReplyCountDelta(
         [...(s.byConvo[convoId] ?? []), optimistic],
-        quotedMessageId,
+        replyRootId(optimistic, s.byConvo[convoId]),
         1,
       ),
     },
   }))
 
+  const navigation = useApp.getState()
+  const navigationFields = ['selectedConversationId', 'view', 'openThread', 'infoAgentId', 'openDocumentId', 'openBoardId', 'openBoardCardId', 'openCalendarEventId', 'composeEmail'] as const
+  let navigationChanged = false
+  const unsubscribeNavigation = useApp.subscribe((next, previous) => {
+    if (navigationFields.some(field => next[field] !== previous[field])) navigationChanged = true
+  })
   try {
-    const { id: realId } = await api.sendMessage(convoId, v, attachment ?? null, quotedMessageId ?? null, clientId, taskReference)
+    const { id: realId, threadId } = await api.sendMessage(convoId, v, attachment ?? null, quotedMessageId ?? null, clientId, taskReference)
     // Reconcile the temp bubble with the server. Either the WS `message.new`
     // already raced ahead of us (real id already in the list → drop the temp)
     // or it hasn't (rename temp → real id so the eventual WS event dedupes
     // cleanly via the existing id-equality filter in applyEvent).
     useMessages.setState((s) => {
       const list = s.byConvo[convoId] ?? []
+      const prior = list.find(m => m.id === tempId)
       const realExists = list.some((m) => m.id === realId)
-      const next = realExists
+      let next = realExists
         ? list.filter((m) => m.id !== tempId)
         : list.map((m) =>
-            m.id === tempId ? { ...m, id: realId, pending: false, failed: false, unconfirmed: false } : m,
+            m.id === tempId ? { ...m, id: realId, threadId, pending: false, failed: false, unconfirmed: false } : m,
           )
+      const confirmed = next.find(m => m.id === realId)
+      if (!realExists && confirmed) next = reconcileReplyCount(next, prior, confirmed)
       return { byConvo: { ...s.byConvo, [convoId]: next } }
     })
     console.info('[message-delivery]', {
       phase: 'client.confirmed', via: 'http', status: 'sent', clientId, messageId: realId,
     })
+    if (threadId && threadId === realId && !navigationChanged
+      && navigation.selectedConversationId === convoId && navigation.view === 'conversations'
+      && !navigation.openThread && !navigation.infoAgentId && !navigation.openDocumentId
+      && !navigation.openBoardId && !navigation.openCalendarEventId && !navigation.composeEmail) {
+      useApp.getState().openThreadView(convoId, threadId)
+    }
   } catch (err) {
     console.warn('[messages] send failed', err)
     const failed = isDefinitiveSendFailure(err)
@@ -746,6 +762,8 @@ export async function sendUserMessage(
       via: 'http', status: failed ? 'failed' : 'unconfirmed',
       clientId, httpStatus: err instanceof ApiError ? err.status : undefined,
     })
+  } finally {
+    unsubscribeNavigation()
   }
 }
 
@@ -761,7 +779,7 @@ export function discardFailedMessage(convoId: string, tempId: string): void {
     // phantom reply for the rest of the session.
     const next = applyReplyCountDelta(
       list.filter((m) => m.id !== tempId),
-      dropped.quotedMessageId,
+      replyRootId(dropped, list),
       -1,
     )
     return { byConvo: { ...s.byConvo, [convoId]: next } }

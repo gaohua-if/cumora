@@ -1,0 +1,300 @@
+{
+  "timestamp": "2026-10-06T09:03:21.920Z",
+  "url": "http://192.168.28.113:5181",
+  "companyId": "co-a09a2bc0-f",
+  "flags": {
+    "localOnly": true,
+    "credentials": {
+      "OPENAI_API_KEY": false,
+      "ANTHROPIC_API_KEY": false,
+      "GOOGLE_API_KEY": false,
+      "NOVITA_API_KEY": false,
+      "ORCAROUTER_API_KEY": false,
+      "DEEPSEEK_API_KEY": false,
+      "SUB2API_ADMIN_KEY": false
+    }
+  },
+  "schema": 22,
+  "imageId": "sha256:0ee393e14ba86b7eb4aa8ddb4f7d6a5cc2ddfe21017d98dcbd06903350a3ee84",
+  "sourceHashes": {
+    "server/src/env.ts": "6f38c42a8569267867525d0caeb78572018842fa4d960d7af50fd63f26e3d0ce",
+    "server/src/model-availability.ts": "c8e21153d1c9a9b9f0470aaef29400f6337e5b748ef25c49a3c940d199a8f5af",
+    "server/src/llm.ts": "180d917d48b40551cc9db950e99c8bd3a0e1049b78f937dcb1825e290cba94b0",
+    "server/src/agents/embeddings.ts": "8ef952a0104c684573c502f58d16b654005da129b4652a06a89ac6f32ec51d82",
+    "server/src/agents/scheduler.ts": "f815053dc9fa078259777525c004c5d7d2eadf41f5eb80a3b501436070cd33e6",
+    "server/src/agents/runtime/inproc-client.ts": "833f0aa62675c45cc2ae6faa9dcffde6ed06457c189c5b2bd4306506d9cb47b8",
+    "server/src/tasks/ingress.ts": "668bf8f5fa38f36bdf71f3dbab1414424227dabc6e5238999de809166106405c",
+    "server/src/tasks/local-model.ts": "5fb12a53068b0dbdc20d4d91d3490c47fc88f101d6383aa781389def48e6857d",
+    "server/src/tasks/runtime-endpoints.ts": "cead3924359faed42dbee784997ea3bca87b78531738e788ae21396618abaf3a",
+    "server/src/tasks/service.ts": "617bf1f241832a66b74c7ca85f673454f70b0d020a2867047abebe5dec684bfc",
+    "server/src/tasks/workspace.ts": "adc46cbda25e7145309378cbe4b6465dff827c9f0fbdb5e9fa420362040cbd78",
+    "server/src/tasks/configuration.ts": "474675f9cdc20801bd2dd0c847b97d527aa0163e49eb326e9f56b3ed59f416dc",
+    "server/src/db/migrations/0021-aida-message-routing.ts": "32616278be7d8dfd4cac2674146e93ee6d220f454fde31010daf1ffd0894eead",
+    "server/src/db/migrations/0022-agent-quote-context.ts": "0984f608dbcc3aa60f75be5b4a7a2eb038af3592d5583c9a25c9b2b084a120b4",
+    "src/components/ConfigurationWorkbench.tsx": "f6068520ae629e9c16ee104ab59b4278ab417e4df8354324572367645f70102c",
+    "scripts/verify-keyless-local.mjs": "0a4f2732472de9cd7168c0565ae3fbb080e261ddc6936676b793ef29905627b9"
+  },
+  "mode": "LEGACY",
+  "realModelInference": true,
+  "checks": [
+    {
+      "id": "K01",
+      "description": "无 Key 服务健康且配置页显示实际本地能力",
+      "passed": true
+    },
+    {
+      "id": "K02",
+      "description": "浏览器创建仅 Aida 与多个本地 Agent 群聊",
+      "passed": true
+    },
+    {
+      "id": "K03",
+      "description": "无 Key 的仅 Aida 群聊真实本地推理",
+      "passed": true
+    },
+    {
+      "id": "K04",
+      "description": "多人群聊普通消息只由默认 Aida 接单",
+      "passed": true
+    },
+    {
+      "id": "K05",
+      "description": "明确点名本地 Agent 由它直接处理",
+      "passed": true
+    },
+    {
+      "id": "K06",
+      "description": "Aida 决定并实际委派，本地成员完成后 Aida 汇总",
+      "passed": true
+    },
+    {
+      "id": "K07",
+      "description": "服务端头像能力明确返回 503",
+      "passed": true
+    },
+    {
+      "id": "K08",
+      "description": "真实模型记录来自本地 Codex，服务端没有模型调用",
+      "passed": true
+    }
+  ],
+  "objects": {
+    "aidaId": "aida-lnn7",
+    "peerId": "agent",
+    "originalPeer": {
+      "model": "gpt-6-sol",
+      "fast_model": "gpt-6-luna"
+    },
+    "solo": "g-99c1fb29",
+    "soloName": "无 Key · 仅 Aida 1791277142428",
+    "multi": "g-066e6498",
+    "multiName": "无 Key · 多 Agent 1791277142428",
+    "soloMessage": {
+      "id": "m-bdf930fc-2bdc-416d-9a7e-7cde1f87c1e9",
+      "body": "请计算 17 + 25，只回复 KEYLESS_SOLO_OK 42，仅使用群聊回复工具把结果发布到本群，不调用其他工具。",
+      "sequence": 1,
+      "work_recipient_ids": [
+        "aida-lnn7"
+      ],
+      "created_at": "2026-10-06T08:59:03.476Z"
+    },
+    "soloAnswer": {
+      "id": "m-5504d5bf-ae25-4c4c-9948-41e5a22363e8",
+      "author_id": "aida-lnn7",
+      "body": "KEYLESS_SOLO_OK 42",
+      "sequence": 2,
+      "quoted_message_id": "m-bdf930fc-2bdc-416d-9a7e-7cde1f87c1e9",
+      "work_recipient_ids": []
+    },
+    "multiMessage": {
+      "id": "m-05bfe38d-0636-42ed-a4d9-409751616dea",
+      "body": "请计算 18 + 24，只回复 KEYLESS_MULTI_OK 42，不需要其他成员参与，仅使用群聊回复工具把结果发布到本群，不调用其他工具。",
+      "sequence": 1,
+      "work_recipient_ids": [
+        "aida-lnn7"
+      ],
+      "created_at": "2026-10-06T08:59:12.130Z"
+    },
+    "multiAnswer": {
+      "id": "m-eae9ee72-b8bd-4486-9f15-90e938d97133",
+      "author_id": "aida-lnn7",
+      "body": "KEYLESS_MULTI_OK 42",
+      "sequence": 2,
+      "quoted_message_id": "m-05bfe38d-0636-42ed-a4d9-409751616dea",
+      "work_recipient_ids": []
+    },
+    "directMessage": {
+      "id": "m-f48d7a75-8639-47dd-90bf-996611466543",
+      "body": "@agent 请计算 19 + 23，只回复 KEYLESS_DIRECT_OK 42，仅使用群聊回复工具把结果发布到本群，不调用其他工具。",
+      "sequence": 3,
+      "work_recipient_ids": [
+        "agent"
+      ],
+      "created_at": "2026-10-06T08:59:21.217Z"
+    },
+    "directAnswer": {
+      "id": "m-ee6e1cda-c51d-414a-ae1c-a2b599da30f1",
+      "author_id": "agent",
+      "body": "KEYLESS_DIRECT_OK 42",
+      "sequence": 4,
+      "quoted_message_id": "m-f48d7a75-8639-47dd-90bf-996611466543",
+      "work_recipient_ids": [
+        "aida-lnn7"
+      ]
+    },
+    "teamMessage": {
+      "id": "m-5f2f8958-3cf7-4c0d-973a-cad64473c30b",
+      "body": "请组织一次真实协作：让群聊成员「验证工作台 Agent」负责计算 20 + 22。请你通过群聊工具明确点名该成员交办，并要求它在本群回复 KEYLESS_WORKER_OK 42，必须使用群聊回复工具发布结果，不调用其他工具。委派后先结束当前回合等待它回复，收到实际结果后你仅回复 KEYLESS_TEAM_OK 42。不要自己代替它计算，不要仅描述计划。",
+      "sequence": 5,
+      "work_recipient_ids": [
+        "aida-lnn7"
+      ],
+      "created_at": "2026-10-06T08:59:47.825Z"
+    },
+    "workerAnswer": {
+      "id": "m-cbdbb04c-2f25-44f2-8a65-25edf1037bef",
+      "author_id": "agent",
+      "body": "KEYLESS_WORKER_OK 42",
+      "sequence": 7,
+      "quoted_message_id": "m-b69121ce-8ccb-424b-87d3-93f004f6ad44",
+      "work_recipient_ids": [
+        "aida-lnn7"
+      ]
+    },
+    "teamAnswer": {
+      "id": "m-b7c21d78-9512-42ed-b724-420328347d37",
+      "author_id": "aida-lnn7",
+      "body": "KEYLESS_TEAM_OK 42",
+      "sequence": 8,
+      "quoted_message_id": "m-cbdbb04c-2f25-44f2-8a65-25edf1037bef",
+      "work_recipient_ids": []
+    },
+    "delegation": [
+      {
+        "id": "m-b69121ce-8ccb-424b-87d3-93f004f6ad44",
+        "author_id": "aida-lnn7",
+        "body": "@agent（验证工作台 Agent）请你负责计算 20 + 22；完成后仅使用群聊回复工具在本群发布 KEYLESS_WORKER_OK 42，不调用其他工具。",
+        "sequence": 6,
+        "quoted_message_id": "m-5f2f8958-3cf7-4c0d-973a-cad64473c30b",
+        "work_recipient_ids": [
+          "agent"
+        ]
+      },
+      {
+        "id": "m-cbdbb04c-2f25-44f2-8a65-25edf1037bef",
+        "author_id": "agent",
+        "body": "KEYLESS_WORKER_OK 42",
+        "sequence": 7,
+        "quoted_message_id": "m-b69121ce-8ccb-424b-87d3-93f004f6ad44",
+        "work_recipient_ids": [
+          "aida-lnn7"
+        ]
+      },
+      {
+        "id": "m-b7c21d78-9512-42ed-b724-420328347d37",
+        "author_id": "aida-lnn7",
+        "body": "KEYLESS_TEAM_OK 42",
+        "sequence": 8,
+        "quoted_message_id": "m-cbdbb04c-2f25-44f2-8a65-25edf1037bef",
+        "work_recipient_ids": []
+      }
+    ],
+    "calls": [
+      {
+        "agent_id": "aida-lnn7",
+        "run_id": "run-6fa6dacb-df46-4979-a30a-d7cd8228d3b1",
+        "purpose": "agent-turn",
+        "source": "byoa-codex",
+        "model": "gpt-6-sol",
+        "status": "ok",
+        "input_tokens": 1345,
+        "output_tokens": 159
+      },
+      {
+        "agent_id": "aida-lnn7",
+        "run_id": "run-2a90a952-acff-4509-8776-1704771d1767",
+        "purpose": "agent-turn",
+        "source": "byoa-codex",
+        "model": "gpt-6-sol",
+        "status": "ok",
+        "input_tokens": 1295,
+        "output_tokens": 135
+      },
+      {
+        "agent_id": "agent",
+        "run_id": "run-3e7f623e-6ea2-4933-b721-3186b34c657b",
+        "purpose": "agent-turn",
+        "source": "byoa-codex",
+        "model": "gpt-6-sol",
+        "status": "ok",
+        "input_tokens": 1748,
+        "output_tokens": 319
+      },
+      {
+        "agent_id": "aida-lnn7",
+        "run_id": "run-9f43ee58-6f36-41e1-acbf-e0f6102bf9fd",
+        "purpose": "agent-turn",
+        "source": "byoa-codex",
+        "model": "gpt-6-sol",
+        "status": "ok",
+        "input_tokens": 1698,
+        "output_tokens": 202
+      },
+      {
+        "agent_id": "agent",
+        "run_id": "run-94b404fa-f001-49af-98dc-c27769a2194a",
+        "purpose": "agent-turn",
+        "source": "byoa-codex",
+        "model": "gpt-6-sol",
+        "status": "ok",
+        "input_tokens": 1811,
+        "output_tokens": 175
+      }
+    ],
+    "runs": [
+      {
+        "id": "run-6fa6dacb-df46-4979-a30a-d7cd8228d3b1",
+        "agent_id": "aida-lnn7",
+        "status": "completed",
+        "model": "gpt-6-sol",
+        "error": null
+      },
+      {
+        "id": "run-2a90a952-acff-4509-8776-1704771d1767",
+        "agent_id": "aida-lnn7",
+        "status": "completed",
+        "model": "gpt-6-sol",
+        "error": null
+      },
+      {
+        "id": "run-3e7f623e-6ea2-4933-b721-3186b34c657b",
+        "agent_id": "agent",
+        "status": "completed",
+        "model": "gpt-6-sol",
+        "error": null
+      },
+      {
+        "id": "run-9f43ee58-6f36-41e1-acbf-e0f6102bf9fd",
+        "agent_id": "aida-lnn7",
+        "status": "completed",
+        "model": "gpt-6-sol",
+        "error": null
+      },
+      {
+        "id": "run-94b404fa-f001-49af-98dc-c27769a2194a",
+        "agent_id": "agent",
+        "status": "completed",
+        "model": "gpt-6-sol",
+        "error": null
+      },
+      {
+        "id": "run-a25c86ff-bdc2-4f34-936d-2b25ab1f2e97",
+        "agent_id": "aida-lnn7",
+        "status": "running",
+        "model": null,
+        "error": null
+      }
+    ]
+  },
+  "errors": []
+}

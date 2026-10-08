@@ -610,6 +610,8 @@ export async function resolveDevice(token: string): Promise<{ computerId: string
  *  This is the credential the daemon uses for the agent's wake-stream SSE and
  *  daemon-side runtime calls. It never enters the model process or agent home. */
 export async function mintAgentRuntimeToken(args: {
+  threadId?: string
+  threadRound?: number
   providerProfile?: string | null
   computerId: string
   agentId: string
@@ -632,7 +634,13 @@ export async function mintAgentRuntimeToken(args: {
     [args.agentId, args.computerId, args.providerProfile ?? null],
   )
   if (!rows[0]) return null
+  if (args.threadId) {
+    const { threadService } = await import('../../tasks/threads.js')
+    if (!await threadService.authorize({ threadId: args.threadId, round: args.threadRound ?? 0, companyId: rows[0].company_id, agentId: args.agentId })) return null
+  }
   const token = signAgentToken({
+    threadId: args.threadId,
+    threadRound: args.threadRound,
     agentId: args.agentId,
     companyId: rows[0].company_id,
     computerId: rows[0].computer_id,

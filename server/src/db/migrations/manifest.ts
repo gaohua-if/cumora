@@ -97,12 +97,15 @@ export const SCHEMA_MIGRATIONS = [
   { version: 18, name: '0018_task_lifecycle', checksum: '7eeecb2e7e42c56329e9b3236c1494fc79401b74fd9472917923325a254421ec' },
   { version: 19, name: '0019_task_definition_snapshots', checksum: '646162621abd01727e41be3354ecce7e71fc7bf42281eccfad36b72e5bb5374f' },
   { version: 20, name: '0020_configuration_workbench', checksum: '41871132f398ac3989a0e29c177694d18f919b469c9017c79a2f40f9b9399be1' },
+  { version: 21, name: '0021_aida_message_routing', checksum: '04bb9bc6bebcc9aa6362ae7d9022fad6686af8ef919f6b154a852bece8c33f3e' },
+  { version: 22, name: '0022_agent_quote_context', checksum: 'e11f07a103da693a6220c4f656a5ae4e1036d089fc09ef56f6f1dcbd0839e8b8' },
+  { version: 23, name: '0023_thread_agent_coordination', checksum: '6f96eb3ed48efd4a7be768ebf8964a3d8cc9902243be07c35f77b1f3fb7b6263' },
 ] as const satisfies readonly MigrationMetadata[]
 
 /** This build intentionally supports one exact schema range. Expand/contract
  * releases may widen the range, but both bounds must remain explicit. */
-export const MIN_SUPPORTED_SCHEMA_VERSION = 14
-export const MAX_SUPPORTED_SCHEMA_VERSION = 20
+export const MIN_SUPPORTED_SCHEMA_VERSION = 23
+export const MAX_SUPPORTED_SCHEMA_VERSION = 23
 
 function assertManifestShape(): void {
   for (let i = 0; i < SCHEMA_MIGRATIONS.length; i++) {

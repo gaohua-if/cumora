@@ -1,16 +1,14 @@
 import { governedTaskModelCall } from './governance.js'
 import { GovernanceBudgetError } from '../governance/runtime-budget.js'
-import { randomUUID } from 'node:crypto'
 import { TaskPlanService } from './plans.js'
 import type { Router, Request, Response, RequestHandler } from 'express'
 import type { AgentRuntimeClaims } from '../agents/runtime/jwt.js'
 import { taskService } from './legacy-guard.js'
-import { TaskError, hashContent, taskLocalToolsAllowed } from './contracts.js'
+import { TaskError, hashContent, } from './contracts.js'
 import { TaskExecutionService, type Claim } from './execution.js'
 import { getTrackedLlmClient } from '../agents/llm-ledger.js'
-import { enforceModelPolicy, realTaskModel } from '../agents/model-policy.js'
 import type { ResponseCreateParamsNonStreaming } from 'openai/resources/responses/responses.js'
-import { authorizeLocalModel, settleLocalModel, localModelRequest } from './local-model.js'
+import { authorizeLocalModel, settleLocalModel, localModelRequest, taskRuntimeModel } from './local-model.js'
 
 type Wrap = (handler: (claims: AgentRuntimeClaims & { companyId: string }, req: Request, res: Response) => Promise<void>) => RequestHandler
 const execution = new TaskExecutionService(taskService)
@@ -53,7 +51,7 @@ export function attachTaskRuntimeEndpoints(router: Router, wrap: Wrap): void {
     res.json({ context: { taskId: resolved.task.id, objective: resolved.task.objective, scopeRevision: resolved.task.scope_revision,
       parentTaskId: resolved.task.parent_task_id, canPlan: !resolved.task.parent_task_id && !plan.rowCount,
       eligibleBindings: resolved.eligibleBindings, rootGrantIds: resolved.rootGrantIds,
-      instructions: resolved.instructions, inputs: resolved.inputs.map((input) => ({ id: input.id, content: input.content })) }, model: enforceModelPolicy(realTaskModel(), 'agent-turn'),
+      instructions: resolved.instructions, inputs: resolved.inputs.map((input) => ({ id: input.id, content: input.content })) }, model: await taskRuntimeModel(taskService, resolved, claim.contextId),
       modelProvider: admission.rows[0].capabilities.modelProvider ?? 'server', binaryHash: admission.rows[0].capabilities.binaryHash })
   }))
   router.post('/tasks/heartbeat', route(async (claims, req, res) => { const claim = parseClaim(req.body?.claim); await claimOwner(claims, claim); await execution.heartbeat(claims.companyId, claim); res.json({ ok: true }) }))

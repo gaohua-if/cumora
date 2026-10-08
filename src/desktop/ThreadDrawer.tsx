@@ -1,6 +1,6 @@
 /**
  * Thread drawer — right-pane sidebar that lists every reply to a single
- * root message (i.e. all messages whose quoted_message_id == root.id).
+ * root message. Native threadId includes nested quotes; legacy replies use the quote.
  * Slack-style. Opens via the "N 条回复" link under each bubble.
  *
  * Data flow:
@@ -26,6 +26,7 @@ function apiToMessage(m: ApiMessage): Message {
     attachment?: Message['attachment']
     whisperLink?: Message['whisperLink']
     quotedMessageId?: string | null
+    threadId?: string | null
     quoted?: Message['quoted'] | null
     replyCount?: number | null
   }
@@ -41,6 +42,7 @@ function apiToMessage(m: ApiMessage): Message {
     attachment: raw.attachment ?? undefined,
     whisperLink: raw.whisperLink ?? undefined,
     quotedMessageId: raw.quotedMessageId ?? undefined,
+    threadId: raw.threadId ?? undefined,
     quoted: raw.quoted ?? undefined,
     replyCount: raw.replyCount ?? undefined,
   }
@@ -57,13 +59,17 @@ export function ThreadDrawer() {
     return (s.byConvo[openThread.convoId] ?? []).find((m) => m.id === openThread.rootId)
   })
 
-  const [replies, setReplies] = useState<Message[]>([])
+  const [snapshot, setSnapshot] = useState<{ key: string; rows: Message[] } | null>(null)
+  const threadKey = openThread ? `${openThread.convoId}:${openThread.rootId}` : ''
+  const replies = snapshot?.key === threadKey ? snapshot.rows : []
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const [taskSnapshot, setTaskSnapshot] = useState<{ key: string; detail: { status: string; round: number; members: Array<{ agentId: string; name: string; state: string; role: string }> } } | null>(null)
+  const task = taskSnapshot?.key === threadKey ? taskSnapshot.detail : null
 
   const liveReplies = useMemo(() => {
     if (!openThread) return []
-    return convoMessages.filter((m) => m.quotedMessageId === openThread.rootId)
+    return convoMessages.filter((m) => m.id !== openThread.rootId && (m.threadId === openThread.rootId || (!m.threadId && m.quotedMessageId === openThread.rootId)))
   }, [convoMessages, openThread?.rootId])
 
   const visibleReplies = useMemo(() => {
@@ -88,11 +94,15 @@ export function ThreadDrawer() {
   useEffect(() => {
     if (!openThread) return
     let cancelled = false
-    setLoading(true); setErr(null)
-    api.getReplies(openThread.convoId, openThread.rootId)
-      .then((rows) => {
+    setLoading(true); setErr(null); setSnapshot(null)
+    const key = `${openThread.convoId}:${openThread.rootId}`
+    Promise.all([api.getReplies(openThread.convoId, openThread.rootId),
+      (useMessages.getState().byConvo[openThread.convoId] ?? []).some(m => m.id === openThread.rootId)
+        ? Promise.resolve([]) : api.getMessages(openThread.convoId, { messageId: openThread.rootId, limit: 1 })])
+      .then(([rows, roots]) => {
         if (cancelled) return
-        setReplies(rows.map(apiToMessage))
+        useMessages.getState().mergeSnapshot(openThread.convoId, [...roots, ...rows])
+        setSnapshot({ key, rows: rows.map(apiToMessage) })
       })
       .catch((e) => {
         if (cancelled) return
@@ -101,6 +111,21 @@ export function ThreadDrawer() {
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [openThread])
+
+  useEffect(() => {
+    if (!openThread) { setTaskSnapshot(null); return }
+    let cancelled = false
+    setTaskSnapshot(null)
+    const update = async () => {
+      try {
+        const detail = await api.getThread(openThread.convoId, openThread.rootId)
+        if (!cancelled) setTaskSnapshot({ key: `${openThread.convoId}:${openThread.rootId}`, detail })
+      } catch { if (!cancelled) setTaskSnapshot(null) }
+    }
+    void update()
+    const timer = setInterval(() => { void update() }, 3000)
+    return () => { cancelled = true; clearInterval(timer) }
+  }, [openThread?.convoId, openThread?.rootId])
 
   if (!openThread || !root) return null
 
@@ -134,6 +159,11 @@ export function ThreadDrawer() {
           className="w-7 h-7 rounded-md grid place-items-center text-ink-500 hover:bg-cloud hover:text-ink-900 transition"
         >×</button>
       </header>
+
+      {task && <section className="px-4 py-3 border-b border-ink-100 text-[12px]" aria-label="任务进度">
+        <div className="font-semibold">{{ working: '处理中', waiting: '等待成员', aggregating: 'Aida 汇总中', completed: '已完成', awaiting_input: '待补充' }[task.status] ?? task.status} · 第 {task.round} 轮</div>
+        <div className="flex flex-wrap gap-2 mt-2">{task.members.map(member => <span key={member.agentId} className="rounded-md bg-cloud px-2 py-1">{member.name} · {{ pending: '排队', running: '执行中', waiting: '等待成员', aggregating: '汇总中', completed: '完成', blocked: '待补充', failed: '失败', timed_out: '超时' }[member.state] ?? member.state}</span>)}</div>
+      </section>}
 
       <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4">
         {/* Root message — small visual treatment to distinguish from replies. */}

@@ -1,8 +1,11 @@
+import { messageInputText } from './message-input.js'
+import type { StoredAttachment } from '../storage.js'
 import { randomUUID, randomBytes } from 'node:crypto'
 import type { Pool, PoolClient } from 'pg'
 import { checkTaskGovernance } from './governance.js'
 import { TaskKnowledgeService } from './knowledge.js'
 import { ConfigurationService } from './configuration.js'
+import { env } from '../env.js'
 import { TaskError, hashContent, parseRule, requireLiveGrant, parseProvenance, checkDestination, canonicalJson,
   type AccessRule, type Provenance } from './contracts.js'
 
@@ -296,9 +299,9 @@ export class TaskService {
     let content = input.text
     let source: Provenance['sources'][number]
     if (input.messageId) {
-      const result = await client.query<{ body: string; author_id: string; task_source_version: number }>(`SELECT body,author_id,task_source_version FROM messages WHERE id=$1 AND conversation_id=$2 FOR SHARE`, [input.messageId, task.conversation_id])
+      const result = await client.query<{ body: string; author_id: string; task_source_version: number; attachment: StoredAttachment | null }>(`SELECT body,author_id,task_source_version,attachment FROM messages WHERE id=$1 AND conversation_id=$2 FOR SHARE`, [input.messageId, task.conversation_id])
       if (!result.rows[0] || result.rows[0].author_id !== principal.id) throw new TaskError('INPUT_SOURCE_DENIED', 403)
-      content = result.rows[0].body
+      content = messageInputText(result.rows[0].body, result.rows[0].attachment)
       source = { kind: 'MESSAGE', id: input.messageId, version: result.rows[0].task_source_version }
       await client.query(`INSERT INTO task_message_links(company_id,task_id,message_id,purpose) VALUES($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
         [principal.companyId, task.id, input.messageId, task.input_revision === 1 ? 'TRIGGER' : 'SUPPLEMENT'])
@@ -563,9 +566,11 @@ export class TaskService {
       await checkTaskGovernance(client, task, binding)
       if((!binding.computer_id || binding.computer_kind==='cloud') && binding.engine && binding.engine!=='managed')throw new TaskError('RUNTIME_CAPABILITY_UNQUALIFIED')
       if (binding.computer_id && binding.computer_kind !== 'cloud') {
-        const admission = await client.query(`SELECT 1 FROM task_runtime_admissions WHERE company_id=$1 AND computer_id=$2 AND engine=$3 AND revoked_at IS NULL FOR SHARE`, [principal.companyId, binding.computer_id, binding.engine])
+        const admission = await client.query(`SELECT capabilities FROM task_runtime_admissions WHERE company_id=$1 AND computer_id=$2 AND engine=$3 AND revoked_at IS NULL FOR SHARE`, [principal.companyId, binding.computer_id, binding.engine])
         if (!admission.rowCount) throw new TaskError('RUNTIME_CAPABILITY_UNQUALIFIED')
+        if (env.LOCAL_ONLY && admission.rows[0].capabilities?.modelProvider !== 'codex-login') throw new TaskError('SERVER_MODEL_UNAVAILABLE',503)
       }
+      if (env.LOCAL_ONLY && (!binding.computer_id || binding.computer_kind === 'cloud')) throw new TaskError('SERVER_MODEL_UNAVAILABLE',503)
       const grants = await client.query(`SELECT s.*, g.version AS live_version,g.revoked_at AS live_revoked,g.expires_at AS live_expires FROM task_grant_versions s
         JOIN access_grants g ON g.id=s.source_grant_id AND g.company_id=s.company_id WHERE s.company_id=$1 AND s.task_id=$2 AND s.scope_revision=$3 AND s.revoked_at IS NULL FOR SHARE OF s,g`, [principal.companyId, taskId, task.scope_revision])
       for (const grant of grants.rows) requireLiveGrant({ ...grant, version: grant.live_version, revoked_at: grant.live_revoked, expires_at: grant.live_expires }, grant.source_version)

@@ -35,7 +35,11 @@ export const env = {
   GOVERNANCE_UPGRADES_ENABLED: !/^(false|0|no|off)$/i.test(process.env.GOVERNANCE_UPGRADES_ENABLED ?? ''),
   DATABASE_URL: required('DATABASE_URL', `postgres://${process.env.USER ?? 'postgres'}@localhost:5432/cumora`),
   REDIS_URL: required('REDIS_URL', 'redis://localhost:6379'),
-  OPENAI_API_KEY: required('OPENAI_API_KEY'),
+  OPENAI_API_KEY: (process.env.OPENAI_API_KEY ?? '').trim(),
+  /** No server inference or tenant credential discovery. Paired runtimes own
+   * their model login. Empty keys select this mode automatically. */
+  LOCAL_ONLY: !(process.env.OPENAI_API_KEY ?? '').trim()
+    || /^(true|1|yes|on)$/i.test(process.env.CUMORA_LOCAL_ONLY ?? ''),
   /**
    * "Brain" model — the agent's main reasoning loop and convene speech.
    * Default model used when an agent's `participants.model` is NULL.

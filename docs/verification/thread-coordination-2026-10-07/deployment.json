@@ -1,0 +1,48 @@
+{
+  "timestamp": "2026-10-06T17:20:33.203Z",
+  "url": "http://192.168.28.113:5181",
+  "imageId": "sha256:932d74ad516ce21bce07febfdc126f3da2189240cc7c6f618144bad44146b764",
+  "schema": 23,
+  "health": {
+    "ok": true,
+    "ts": 1791307233227
+  },
+  "systemd": "ActiveState=active\nMainPID=2640569",
+  "sourceParity": {
+    "server/src/tasks/threads.ts": {
+      "workspace": "13b8f9665ece43a3ec20346adce5d84adcb3f1b8a22eeecb608004f2b3af34e6",
+      "container": "13b8f9665ece43a3ec20346adce5d84adcb3f1b8a22eeecb608004f2b3af34e6"
+    },
+    "server/src/tasks/thread-scope.ts": {
+      "workspace": "fd3179104b217547c17a7e5e7c13bf6ed2da57bce8ded683f957b7ffaaeaeee7",
+      "container": "fd3179104b217547c17a7e5e7c13bf6ed2da57bce8ded683f957b7ffaaeaeee7"
+    },
+    "server/src/agents/computer/daemon.ts": {
+      "workspace": "375c7f9a67151ae86563f6a0651749eb9b27d812404d421ad16d60474afe9784",
+      "container": "375c7f9a67151ae86563f6a0651749eb9b27d812404d421ad16d60474afe9784"
+    },
+    "server/src/agents/runtime/server.ts": {
+      "workspace": "a2b4afca802ee47bd3f7593f9c2d669e99de1970b516f35e8702d72aa85fab74",
+      "container": "a2b4afca802ee47bd3f7593f9c2d669e99de1970b516f35e8702d72aa85fab74"
+    },
+    "server/src/db/migrations/0023-thread-agent-coordination.ts": {
+      "workspace": "31cbd00e1a3b4a1c845ac6fb6daddda968eb4d1c2c8883e1656e766d568d2fad",
+      "container": "31cbd00e1a3b4a1c845ac6fb6daddda968eb4d1c2c8883e1656e766d568d2fad"
+    }
+  },
+  "servedFrontendParity": {
+    "dist/index.html": {
+      "served": "767fbc3af955af66911784015a4e1c135f6262264f58bb0fd4b86699867b78a9",
+      "container": "767fbc3af955af66911784015a4e1c135f6262264f58bb0fd4b86699867b78a9"
+    },
+    "dist/assets/index-fQqTY5c_.js": {
+      "served": "986e4d92d80baccf1b1f9de19fb448d143a8fc33ddbac657e57449e02034859a",
+      "container": "986e4d92d80baccf1b1f9de19fb448d143a8fc33ddbac657e57449e02034859a"
+    },
+    "dist/assets/index-bpMm8jJU.css": {
+      "served": "80f211345ba567ebcba2461a61785cd580125c758f2cf1afe2e7779204d7fc67",
+      "container": "80f211345ba567ebcba2461a61785cd580125c758f2cf1afe2e7779204d7fc67"
+    }
+  },
+  "conceptDocumentHash": "809a9c159f46f50ab7b47b3fd03095430ccbf4a65ff65e82e6eb3ebf5afd6d11"
+}

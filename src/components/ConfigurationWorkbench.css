@@ -1,3 +1,13 @@
+.cwb-runtime {
+  margin: 16px;
+  padding: 12px 16px;
+  border: 1px solid #d9e0de;
+  border-radius: 8px;
+  background: #f3f6f4;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.cwb-runtime p { margin: 6px 0 0; }
 .cwb {
   height: 100%;
   display: grid;

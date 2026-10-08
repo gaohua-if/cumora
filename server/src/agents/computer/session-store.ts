@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { lstat, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 
@@ -6,6 +6,14 @@ import type { EngineId } from './engine.js'
 
 export function sessionIdPreview(sessionId: string): string {
   return sessionId.slice(0, 8)
+}
+
+/** A work round is deliberately absent: follow-ups keep their thread session. */
+export function nativeThreadSessionScope(identity: {
+  server: string; company: string; channel: string; thread: string; agent: string;
+  engine: EngineId; provider: string; model: string | null | undefined; prompt: string | null | undefined
+}): string {
+  return createHash('sha256').update(JSON.stringify(identity)).digest('hex')
 }
 
 /** Engine-owned pointer to the engine's real transcript/session storage.

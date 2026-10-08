@@ -65,6 +65,9 @@ import { TASK_EXECUTOR_FENCES_SQL, taskExecutorFencesChecksum } from './migratio
 import { TASK_LIFECYCLE_SQL, taskLifecycleChecksum } from './migrations/0018-task-lifecycle.js'
 import { TASK_DEFINITION_SNAPSHOTS_SQL, taskDefinitionSnapshotsChecksum } from './migrations/0019-task-definition-snapshots.js'
 import { CONFIGURATION_WORKBENCH_SQL, configurationWorkbenchChecksum } from './migrations/0020-configuration-workbench.js'
+import { AGENT_QUOTE_CONTEXT_SQL, agentQuoteContextChecksum } from './migrations/0022-agent-quote-context.js'
+import { THREAD_AGENT_COORDINATION_SQL, threadAgentCoordinationChecksum } from './migrations/0023-thread-agent-coordination.js'
+import { AIDA_MESSAGE_ROUTING_SQL, aidaMessageRoutingChecksum } from './migrations/0021-aida-message-routing.js'
 import { TASK_SOURCE_AND_GOVERNANCE_LINKS_SQL, taskSourceAndGovernanceLinksChecksum } from './migrations/0017-task-source-and-governance-links.js'
 
 /** Frozen data backfill embedded in migration 0001. Exported so its behavior
@@ -2702,6 +2705,12 @@ const VERSIONED_MIGRATIONS: readonly VersionedMigration[] = [
     up: async(client) => { await client.query(TASK_DEFINITION_SNAPSHOTS_SQL) } },
   { ...SCHEMA_MIGRATIONS[19], sourceChecksum: configurationWorkbenchChecksum(), transactional: true,
     up: async(client) => { await client.query(CONFIGURATION_WORKBENCH_SQL) } },
+  { ...SCHEMA_MIGRATIONS[20], sourceChecksum: aidaMessageRoutingChecksum(), transactional: true,
+    up: async(client) => { await client.query(AIDA_MESSAGE_ROUTING_SQL) } },
+  { ...SCHEMA_MIGRATIONS[21], sourceChecksum: agentQuoteContextChecksum(), transactional: true,
+    up: async(client) => { await client.query(AGENT_QUOTE_CONTEXT_SQL) } },
+  { ...SCHEMA_MIGRATIONS[22], sourceChecksum: threadAgentCoordinationChecksum(), transactional: true,
+    up: async(client) => { await client.query(THREAD_AGENT_COORDINATION_SQL) } },
 ]
 
 export async function applyPendingMigration(

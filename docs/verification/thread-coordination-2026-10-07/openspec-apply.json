@@ -1,0 +1,82 @@
+{
+  "changeName": "enable-thread-scoped-agent-coordination",
+  "changeDir": "/home/gh/workspace/百工/cumora/openspec/changes/enable-thread-scoped-agent-coordination",
+  "schemaName": "spec-driven",
+  "contextFiles": {
+    "proposal": [
+      "/home/gh/workspace/百工/cumora/openspec/changes/enable-thread-scoped-agent-coordination/proposal.md"
+    ],
+    "specs": [
+      "/home/gh/workspace/百工/cumora/openspec/changes/enable-thread-scoped-agent-coordination/specs/thread-agent-coordination/spec.md"
+    ],
+    "design": [
+      "/home/gh/workspace/百工/cumora/openspec/changes/enable-thread-scoped-agent-coordination/design.md"
+    ],
+    "tasks": [
+      "/home/gh/workspace/百工/cumora/openspec/changes/enable-thread-scoped-agent-coordination/tasks.md"
+    ]
+  },
+  "progress": {
+    "total": 7,
+    "complete": 7,
+    "remaining": 0
+  },
+  "tasks": [
+    {
+      "id": "1",
+      "description": "1.1 Append schema 23 and transactional automatic thread ingress; verify migration tests and PostgreSQL thread/quote/round isolation tests, document the native adapter contract.",
+      "done": true,
+      "sourcePath": "/home/gh/workspace/百工/cumora/openspec/changes/enable-thread-scoped-agent-coordination/tasks.md",
+      "line": 5
+    },
+    {
+      "id": "2",
+      "description": "1.2 Implement bounded delegation, result artifacts, deterministic aggregation, blocker/failure/timeout recovery and deduplication; verify PostgreSQL multi-member, peer-mention, stale round and duplicate result tests.",
+      "done": true,
+      "sourcePath": "/home/gh/workspace/百工/cumora/openspec/changes/enable-thread-scoped-agent-coordination/tasks.md",
+      "line": 6
+    },
+    {
+      "id": "3",
+      "description": "2.1 Add thread-bound runtime claims, scoped inbox/history/reply/read tools and finish handling; verify runtime integration tests and existing protected TASK regression.",
+      "done": true,
+      "sourcePath": "/home/gh/workspace/百工/cumora/openspec/changes/enable-thread-scoped-agent-coordination/tasks.md",
+      "line": 10
+    },
+    {
+      "id": "4",
+      "description": "2.2 Switch daemon to thread-specific session stores and working directories, queue unrelated thread messages and resume follow-ups; verify session isolation tests, typecheck and document lifecycle.",
+      "done": true,
+      "sourcePath": "/home/gh/workspace/百工/cumora/openspec/changes/enable-thread-scoped-agent-coordination/tasks.md",
+      "line": 11
+    },
+    {
+      "id": "5",
+      "description": "3.1 Carry threadId through API, realtime and message stores; display nested replies, member/task status and open new task thread automatically; verify frontend typecheck/build and browser interactions.",
+      "done": true,
+      "sourcePath": "/home/gh/workspace/百工/cumora/openspec/changes/enable-thread-scoped-agent-coordination/tasks.md",
+      "line": 15
+    },
+    {
+      "id": "6",
+      "description": "4.1 Run focused integration/regression checks and strict OpenSpec validation; deploy schema/server and repository daemon on 5181; verify health and keyless local login execution.",
+      "done": true,
+      "sourcePath": "/home/gh/workspace/百工/cumora/openspec/changes/enable-thread-scoped-agent-coordination/tasks.md",
+      "line": 19
+    },
+    {
+      "id": "7",
+      "description": "4.2 Complete browser and real model acceptance for multi-member aggregation (including peer mentions and blocked member), two concurrent threads and follow-up session continuity; publish evidence with task/session/artifact/delivery IDs and mark tasks only after validation passes.",
+      "done": true,
+      "sourcePath": "/home/gh/workspace/百工/cumora/openspec/changes/enable-thread-scoped-agent-coordination/tasks.md",
+      "line": 20
+    }
+  ],
+  "taskTrackingConfigured": true,
+  "state": "all_done",
+  "instruction": "All tasks are complete! This change is ready to be archived.\nConsider running tests and reviewing the changes before archiving.",
+  "root": {
+    "path": "/home/gh/workspace/百工/cumora",
+    "source": "nearest"
+  }
+}

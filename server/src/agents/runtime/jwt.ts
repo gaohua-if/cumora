@@ -16,6 +16,8 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
 import { env } from '../../env.js'
 
 export interface AgentRuntimeClaims {
+  threadId?: string
+  threadRound?: number
   /** agent participant id — pinned at sign time, immutable for the token's life. */
   sub: string
   /** company id the agent belongs to. Pinned so requests can't cross tenants. */
@@ -51,6 +53,8 @@ function sign(headerB64: string, payloadB64: string): string {
 
 /** Mint a token for a freshly-spawned agent pod. */
 export function signAgentToken(args: {
+  threadId?: string
+  threadRound?: number
   agentId: string
   companyId: string | null
   computerId: string | null
@@ -59,6 +63,7 @@ export function signAgentToken(args: {
 }): string {
   const now = Math.floor(Date.now() / 1000)
   const claims: AgentRuntimeClaims = {
+    ...(args.threadId ? { threadId: args.threadId, threadRound: args.threadRound } : {}),
     sub: args.agentId,
     companyId: args.companyId,
     computerId: args.computerId,
@@ -96,5 +101,6 @@ export function verifyAgentToken(token: string): AgentRuntimeClaims {
   if (typeof claims.assignmentId !== 'string' || !claims.assignmentId) {
     throw new Error('missing assignmentId')
   }
+  if (claims.threadId !== undefined && (typeof claims.threadId !== 'string' || !claims.threadId || !Number.isInteger(claims.threadRound) || claims.threadRound! < 1)) throw new Error('invalid thread scope')
   return claims
 }

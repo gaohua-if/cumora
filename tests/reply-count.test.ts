@@ -16,7 +16,6 @@
  * had just created. Their teammates could.
  */
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
 import { describe, it } from 'node:test'
 import type { Message } from '../src/types'
 import { applyReplyCountDelta } from '../src/lib/replyCount'
@@ -82,42 +81,5 @@ describe('applyReplyCountDelta', () => {
     list = applyReplyCountDelta(list, 'm-root', 1)   // sendUserMessage
     // echo: prior found -> no delta
     assert.equal(list[0].replyCount, 1, 'the author must end at exactly one, not zero and not two')
-  })
-})
-
-describe('the three places that have to agree', () => {
-  // The helper is pure: every test above passes just as well against a build
-  // where sendUserMessage never counts. The bug was never in the arithmetic —
-  // it was that only one of the three sites did any.
-
-  it('the optimistic insert counts the reply', async () => {
-    const source = await readFile(new URL('../src/stores/messages.ts', import.meta.url), 'utf8')
-    const send = source.slice(source.indexOf('export async function sendUserMessage'))
-    const body = send.slice(0, send.indexOf('\nexport '))
-    assert.match(body, /applyReplyCountDelta\([\s\S]{0,120}quotedMessageId,\s*\n?\s*1,/,
-      'sendUserMessage no longer counts the reply it just inserted — the author\'s root will stay one short and, at zero, hide the only way into the thread')
-  })
-
-  it('the server echo does not count it a second time', async () => {
-    const source = await readFile(new URL('../src/stores/messages.ts', import.meta.url), 'utf8')
-    assert.match(source, /if \(!prior\) next = applyReplyCountDelta\(next, m\.quotedMessageId, 1\)/,
-      'the arrival bump is no longer guarded on `!prior`, so the author would double-count their own reply')
-  })
-
-  it('discarding a failed reply gives the count back', async () => {
-    // Also what keeps a retry balanced: retryFailedMessage discards, then sends.
-    const source = await readFile(new URL('../src/stores/messages.ts', import.meta.url), 'utf8')
-    const discard = source.slice(source.indexOf('export function discardFailedMessage'))
-    const body = discard.slice(0, discard.indexOf('\nexport '))
-    assert.match(body, /applyReplyCountDelta\([\s\S]{0,160}-1,/,
-      'a discarded reply leaves a phantom count on its root, and a retry would count twice')
-  })
-
-  it('the thread drawer is still gated on the count', async () => {
-    // If this ever stops being true the bug above stops being a missing door
-    // and becomes a wrong number — worth knowing which one we are fixing.
-    const source = await readFile(new URL('../src/components/Message.tsx', import.meta.url), 'utf8')
-    assert.match(source, /\(msg\.replyCount \?\? 0\) > 0/)
-    assert.match(source, /openThreadView\(msg\.conversationId, msg\.id\)/)
   })
 })

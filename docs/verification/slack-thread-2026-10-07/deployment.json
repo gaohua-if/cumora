@@ -1,0 +1,44 @@
+{
+  "timestamp": "2026-10-07T09:19:51.792Z",
+  "url": "http://192.168.28.113:5181",
+  "imageId": "sha256:ee5b74e2d03a7bec9b826a3485940e82b8b04cf195d7f37c218b62b4c9559e24",
+  "schema": 23,
+  "health": {
+    "ok": true,
+    "ts": 1791364791820
+  },
+  "systemd": "ActiveState=active\nMainPID=309591",
+  "sourceParity": {
+    "server/src/tasks/threads.ts": {
+      "workspace": "5815ecd7ddf1ac636213221ecd395ed1994324d2bf8b7bb2eb18d90b8e145489",
+      "container": "5815ecd7ddf1ac636213221ecd395ed1994324d2bf8b7bb2eb18d90b8e145489"
+    },
+    "server/src/tasks/message-input.ts": {
+      "workspace": "1ee0ea3795f714f2d03537f2f4dc1286c47fd05f9c83df4119ca9e9a23654fc2",
+      "container": "1ee0ea3795f714f2d03537f2f4dc1286c47fd05f9c83df4119ca9e9a23654fc2"
+    },
+    "server/src/tasks/service.ts": {
+      "workspace": "e1769f43b98d05cb0c17cbab4780add89d10b1bf336640c590ca690acc709e12",
+      "container": "e1769f43b98d05cb0c17cbab4780add89d10b1bf336640c590ca690acc709e12"
+    },
+    "server/src/api/router.ts": {
+      "workspace": "5ffa69afa6a7113fd96af7d6cd7afd3c475bab747bd0c4c74eeb902c03c9f477",
+      "container": "5ffa69afa6a7113fd96af7d6cd7afd3c475bab747bd0c4c74eeb902c03c9f477"
+    }
+  },
+  "servedFrontendParity": {
+    "dist/index.html": {
+      "served": "4c137f442fa8fb48e870c0df02d5c4f2e5f74a68ddafd217a8979f5f61abbde6",
+      "container": "4c137f442fa8fb48e870c0df02d5c4f2e5f74a68ddafd217a8979f5f61abbde6"
+    },
+    "dist/assets/index-CpZPtXTJ.js": {
+      "served": "70324fbe6f82dd7b2fa85ede60d10bb459453be269155a6a6d6f71397a26e68b",
+      "container": "70324fbe6f82dd7b2fa85ede60d10bb459453be269155a6a6d6f71397a26e68b"
+    },
+    "dist/assets/index-bpMm8jJU.css": {
+      "served": "80f211345ba567ebcba2461a61785cd580125c758f2cf1afe2e7779204d7fc67",
+      "container": "80f211345ba567ebcba2461a61785cd580125c758f2cf1afe2e7779204d7fc67"
+    }
+  },
+  "conceptDocumentHash": "809a9c159f46f50ab7b47b3fd03095430ccbf4a65ff65e82e6eb3ebf5afd6d11"
+}

@@ -1,0 +1,52 @@
+{
+  "recordedAt": "2026-10-06T17:21:17.582Z",
+  "scope": "Focused checks completed during this implementation; not a repository-wide test run",
+  "unit": {
+    "passed": 59,
+    "failed": 0,
+    "coverage": [
+      "native session scope and persistence",
+      "runtime session recovery/reset",
+      "prompt surface",
+      "runtime JWT",
+      "schema migration manifest"
+    ]
+  },
+  "threadIntegration": {
+    "passed": 4,
+    "failed": 0,
+    "file": "server/src/__integration__/thread-agent-coordination.test.ts",
+    "coverage": [
+      "two isolated threads and nested quotes",
+      "new rounds and queued mid-turn input",
+      "atomic bounded plans and result deduplication",
+      "peer mentions and blocked/failure/timeout outcomes",
+      "immutable artifacts and handoffs",
+      "real HTTP ingress, scoped runtime, session reports and TASK guard"
+    ]
+  },
+  "existingIntegration": {
+    "passed": 31,
+    "failed": 0,
+    "files": [
+      "server/src/__integration__/channel-task-execution.test.ts",
+      "server/src/__integration__/keyless-aida-routing.test.ts"
+    ],
+    "note": "Initial combined run: 30 passed, one schema-14 compatibility assertion failed because minimum schema is now 23. Updated that assertion to require rejection of outdated schema; focused rerun passed. Other 30 cases passed in the combined run."
+  },
+  "serverTypecheck": "passed",
+  "frontendTypecheck": "passed",
+  "productionBuild": "passed (existing bundle-size/dynamic-import warnings)",
+  "guards": {
+    "bigBrain": "passed",
+    "trackedLlm": "passed",
+    "engineRegistry": "passed"
+  },
+  "targetedLint": "passed",
+  "browserAndRealModels": {
+    "passed": 8,
+    "failed": 0,
+    "evidence": "acceptance.json"
+  },
+  "conceptDocumentUnchanged": true
+}

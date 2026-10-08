@@ -51,7 +51,7 @@ import { SKYPE_EMOTICONS_GUIDE } from '../skype-emoticons.js'
 import { finalizeTriage, isRateLimited, parseTriage } from '../triage-core.js'
 import { type ActionSurface, actionSurfaceFor, actionSurfaceText, calendarExampleText, postingMechanicsText } from './prompt-surface.js'
 import { allowUnsandboxedByoa, detectEnginesWithStatus, ENGINE_IDS, engineFailureOf, type DetectedEngineSnapshot, type EngineHopReport, type EngineId, type EngineRunResult, type EngineSession, type EngineUsage, enrichDetectedEngines, evaluateRunnableEngines, getAdapter, runEngineDoctor, type RunnableEngineEvaluation, snapshotDetectedEngines } from './engine.js'
-import { EngineSessionStore, sessionIdPreview } from './session-store.js'
+import { EngineSessionStore, sessionIdPreview, nativeThreadSessionScope } from './session-store.js'
 import { runWithSessionRecovery } from './session-recovery.js'
 
 export { conversationHeader }
@@ -1646,7 +1646,11 @@ export class AgentRunner {
   private trustedCliDir: string
   private ipcDir: string
   private readonly engine: EngineId
-  private readonly sessionStore: EngineSessionStore
+  private sessionStore: EngineSessionStore
+  private activeThread: { threadId: string; companyId: string; round: number; conversationId: string; contextId: string } | null = null
+  private sessionScope = ''
+  private controlToken = ''
+  private controlTokenExpiresAt = 0
   private busy = false
   private pendingRerun = false
   // Triage-trouble backoff: when the small-brain triage is rate-limited OR
@@ -1740,7 +1744,7 @@ export class AgentRunner {
     // Keep even the IPC parent outside the model-writable home. Secure Codex is
     // granted only the two leaf request/response directories; Claude reaches
     // them through the fixed MCP bridge, not a model-controlled shell.
-    this.ipcDir = join(CONFIG_DIR, '.runtime-cli-ipc', this.agent.id)
+    this.ipcDir = join(CONFIG_DIR, '.runtime-cli-ipc', this.agent.id, `legacy-${randomUUID()}`)
     // The profile is a third dimension of session identity alongside agent and
     // engine: a different endpoint/account owns a different transcript, so its
     // session id must never be offered to another profile's provider.
@@ -1801,6 +1805,7 @@ export class AgentRunner {
     const previous = this.sessionId
     this.sessionId = id
     void this.sessionStore.save(id)
+    if (id && this.activeThread) void this.reportThreadSession(id)
     if (id) console.log(`[computer] ${this.agent.id} saved ${this.engine} session ${sessionIdPreview(id)}`)
     else if (previous) console.log(`[computer] ${this.agent.id} cleared ${this.engine} session ${sessionIdPreview(previous)}`)
   }
@@ -2020,15 +2025,56 @@ export class AgentRunner {
       && this.agent.fastModel === agent.fastModel
   }
 
-  private async ensureToken(signal?: AbortSignal): Promise<string> {
-    if (this.token && Date.now() < this.tokenExpiresAt - TOKEN_REFRESH_SKEW_MS) return this.token
+  private async ensureToken(signal?: AbortSignal, control = false): Promise<string> {
+    if (control && this.controlToken && Date.now() < this.controlTokenExpiresAt - TOKEN_REFRESH_SKEW_MS) return this.controlToken
+    if (!control && this.token && Date.now() < this.tokenExpiresAt - TOKEN_REFRESH_SKEW_MS) return this.token
     const minted = await api<{ token: string; expiresInSeconds: number }>(
       this.cfg.serverUrl, `/api/agents/${this.agent.id}/runtime-token`,
-      { method: 'POST', headers: { Authorization: `Bearer ${this.cfg.deviceToken}` }, body: JSON.stringify({ providerProfile: this.agent.providerProfile ?? null }), signal },
+      { method: 'POST', headers: { Authorization: `Bearer ${this.cfg.deviceToken}` }, body: JSON.stringify({ providerProfile: this.agent.providerProfile ?? null,
+        ...(!control && this.activeThread ? { threadId: this.activeThread.threadId, threadRound: this.activeThread.round } : {}) }), signal },
     )
+    if (control) {
+      this.controlToken = minted.token
+      this.controlTokenExpiresAt = Date.now() + minted.expiresInSeconds * 1000
+      return minted.token
+    }
     this.token = minted.token
     this.tokenExpiresAt = Date.now() + minted.expiresInSeconds * 1000
     return this.token
+  }
+
+  private async reportThreadSession(id: string): Promise<void> {
+    const token = await this.ensureToken()
+    await runtimeBest(this.cfg.serverUrl, '/threads/session', token, { sessionId: id, engine: this.engine, sessionScope: this.sessionScope })
+  }
+
+  private async selectThread(work: AgentRunner['activeThread']): Promise<void> {
+    if (this.activeThread?.threadId === work?.threadId && this.activeThread?.round === work?.round) return
+    // Stop the transport while retaining the engine-owned resume pointer.
+    await this.engineSession?.stop({ force: true })
+    this.engineSession = null
+    await this.cliBroker?.stop()
+    this.cliBroker = null
+    await this.sessionStore.flush()
+    this.activeThread = work
+    this.token = ''; this.tokenExpiresAt = 0
+    this.sessionScope = work ? nativeThreadSessionScope({ server: this.cfg.serverUrl, company: work.companyId, channel: work.conversationId, thread: work.threadId,
+      agent: this.agent.id, engine: this.engine, provider: providerProfileFingerprint(this.provider), model: this.agent.model, prompt: this.agent.systemPrompt }) : providerProfileFingerprint(this.provider)
+    this.home = work ? join(AGENTS_ROOT, this.agent.id, 'threads', this.sessionScope) : join(AGENTS_ROOT, this.agent.id)
+    this.binDir = join(this.home, 'bin')
+    this.sessionStore = new EngineSessionStore(SESSIONS_DIR, this.agent.id, this.engine, this.sessionScope || undefined)
+    this.sessionId = null
+    await this.adapter.seedHome(this.home, { id: this.agent.id, name: this.agent.name, role: this.agent.role, systemPrompt: this.agent.systemPrompt })
+    if (allowUnsandboxedByoa()) await writeShim(this.binDir)
+    // A stopped engine's queued IPC can never be replayed into another thread
+    // or round. Older daemon releases only know the unscoped Agent directory.
+    const transport = work ? `${this.sessionScope}-${work.round}-${randomUUID()}` : `legacy-${randomUUID()}`
+    this.ipcDir = join(CONFIG_DIR, '.runtime-cli-ipc', this.agent.id, transport)
+    this.cliBroker = new RuntimeCliBroker(this.ipcDir, join(CONFIG_DIR, '.runtime-cli-broker', this.agent.id, transport), (argv, signal) => this.invokeRuntimeCli(argv, signal))
+    await this.cliBroker.start()
+    await this.loadSessionId()
+    this.triageBackoffUntil = 0
+    this.triageTroubleStreak = 0
   }
 
   private invalidateToken(token: string): void {
@@ -2510,6 +2556,15 @@ export class AgentRunner {
   }
 
   private standingPrompt(): string {
+    if (this.activeThread) return `You are ${this.agent.name}, working only in the current Cumora task thread. ` + actionSurfaceText(this.promptSurface()) +
+      `Use the cumora tool with argv arrays (commands below). Never use a shell to invoke cumora when the fixed tool is available. ` +
+      `Call ["thread","status"] for the current role, plan and results. For a simple coordinator task, complete it then call ["thread","summary","final answer"]. ` +
+      `For delegation, coordinator calls ["thread","delegate","JSON array of {agentId,objective}"] once with every selected member, then ENDS the turn and waits. ` +
+      `Members must call ["thread","result","completed|blocked|failed","result text"], then end the turn. Progress reply is optional and cannot finish work. ` +
+      `When state is aggregating, summarize ALL member results, evidence and blockers using thread summary. Do not delegate again or merely promise a later summary. ` +
+      `Do not ask members to post ordinary replies instead of structured results. Missing sources are blocked, never invented. ` +
+      `For a solo blocked task call ["thread","summary","--blocked","missing information and next steps"]. Native threads do not use /workspace/task-plan.json. ` +
+      `Other threads are queued separately. Work files stay in this thread's home. Do not read another thread's files or global task memory.`
     // RESTORED to the 5/28T22:17Z baseline SHAPE: one minimal prompt of essential
     // mechanics, with GLANCE_YIELD_RULES and a few core sections — NOT a wall of
     // ── XXX ── sections (that's the bloat the user called out: AGENT_VOICE_RULES
@@ -2795,6 +2850,9 @@ export class AgentRunner {
    *  of the ping waiting for the (possibly long) turn to end. Best-effort; only
    *  direct pings, deduped per message, never interrupts the main task. */
   private async maybeSteer(convo: string): Promise<void> {
+    // Thread work is drained from its durable queue on the next turn. Never
+    // inject an unrelated wake or supplement into a live native session.
+    if (this.activeThread) { this.pendingRerun = true; return }
     const session = this.engineSession
     if (!session?.alive || this.sideSteering) return
     this.sideSteering = true
@@ -2865,7 +2923,7 @@ export class AgentRunner {
     try {
       do {
         this.pendingRerun = false
-        const taskModeToken = await this.ensureToken()
+        const taskModeToken = await this.ensureToken(undefined, true)
         const taskMode = await runtimeGet<boolean>(this.cfg.serverUrl, '/task-mode', taskModeToken)
         if (taskMode === null) break
         if (taskMode) {
@@ -2873,6 +2931,9 @@ export class AgentRunner {
           await runLocalTask({ serverUrl: this.cfg.serverUrl, token: taskModeToken, engine: this.engine, signal: this.teardown.signal })
           break
         }
+        const next = await runtimeGet<{ work: AgentRunner['activeThread'] }>(this.cfg.serverUrl, '/threads/next', taskModeToken)
+        if (!next) break // fail closed on work-discovery failures
+        await this.selectThread(next.work)
         // Triage-trouble backoff: while triage is cooling down (after a rate-limit
         // or a fail-open), skip the WHOLE turn — no triage call, no engine spawn —
         // so we neither hammer a broken/throttled triage nor burn the big brain.
@@ -2921,12 +2982,12 @@ export class AgentRunner {
         // Both cases are exactly when a human IS waiting, and with no indicator
         // the agent reads as dead: it can work for minutes — engine spawned, turn
         // running — while the room shows nothing at all.
-        const convo = typingConversation(wakeConvo, seen)
+        const convo = this.activeThread?.conversationId ?? typingConversation(wakeConvo, seen)
         // HARD COST GATE (content-blind, fail-closed): system-only inbox noise
         // is not a task. A validated manual backgroundBrief IS a task, though:
         // Kanban assignment/mention wakes deliberately have no chat row, and
         // dropping that SSE payload here was why BYOA cards stayed in Todo.
-        if (!wakeHasActionableInput(hasReal, activeBackgroundBrief)) {
+        if (!this.activeThread && !wakeHasActionableInput(hasReal, activeBackgroundBrief)) {
           await this.ackSeen(token, seen)
           await runtimeBest(this.cfg.serverUrl, '/status', token, { status: 'avail' })
           // No per-tick log: this is the idle steady state (every poll × agent),
@@ -2939,7 +3000,7 @@ export class AgentRunner {
         // A deliberate manual brief is already actionable, just like the cloud
         // `briefedManual` path. Only ordinary inbox wakes need the small-brain
         // triage decision.
-        const triage = activeBackgroundBrief ? null : await this.inboxTriage(token)
+        const triage = activeBackgroundBrief || this.activeThread ? null : await this.inboxTriage(token)
         if (this.stopped) break
         const triageMs = Date.now() - turnStart // ensureToken + snapshot + triage
         // Triage was rate-limited → STOP. Do NOT retry, do NOT wake the big brain,
@@ -3045,6 +3106,8 @@ export class AgentRunner {
         // Pin runId so per-hop ledger rows link back to this turn (see
         // maybeAgendaTurn for the same hook).
         this.currentRunId = run?.runId ?? null
+        if (this.activeThread && !run?.runId) throw new Error('thread execution record unavailable')
+        if (this.activeThread && this.sessionId) await this.reportThreadSession(this.sessionId)
         const stopRunBeat = this.beatRun(token, run?.runId)
         let exitCode = 0
         let engineError: string | null = null
@@ -3067,7 +3130,7 @@ export class AgentRunner {
         try {
           const turnBackgroundBrief = activeBackgroundBrief
           const [memoryDigest, triageNote, roster] = await Promise.all([
-            this.memoryDigest(projectIds),
+            this.activeThread ? Promise.resolve('') : this.memoryDigest(projectIds),
             Promise.resolve(this.formatTriageNote(triage)),
             // Live team roster (names + roles + ids), fetched fresh from the
             // server so a locally-run agent knows WHO its teammates are and what
@@ -3077,7 +3140,9 @@ export class AgentRunner {
               .then((r) => r?.roster ?? '').catch(() => ''),
           ])
           this.teardown.signal.throwIfAborted()
-          const delta = turnBackgroundBrief
+          const brief = this.activeThread ? await runtimeGet<{ text: string }>(this.cfg.serverUrl, '/threads/brief', token) : null
+          if (this.activeThread && !brief) throw new Error('thread input unavailable')
+          const delta = brief ? `Current time: ${new Date().toISOString()}\n${brief.text}\nExecute the current role using the thread tools and finish this turn.` : turnBackgroundBrief
             ? this.manualBriefDelta(turnBackgroundBrief, memoryDigest, digest, roster)
             : this.chatDelta(memoryDigest, triageNote, digest, roster)
           const result = await this.runWithSessionRecovery(delta)
@@ -3175,6 +3240,7 @@ export class AgentRunner {
         // from re-waking the big brain on the next drain. On engine FAILURE we
         // skip the ack so the unread survives for a retry / next wake.
         if (!engineError) await this.ackSeen(token, seen)
+        if (this.activeThread) this.pendingRerun = true // drain durable work from other threads and aggregation
         await runtimeBest(this.cfg.serverUrl, '/status', token, { status: 'avail' })
         // A chat turn resets the "quiet" anchor: an agent that just acted in chat
         // isn't immediately pulled into an agenda turn (mirrors the cloud idle

@@ -1124,9 +1124,11 @@ export const api = {
     }),
   getMessages: (
     conversationId: string,
-    opts?: { before?: number; limit?: number },
+    opts?: { before?: number; limit?: number; view?: 'channel'; messageId?: string },
   ) => {
     const qs = new URLSearchParams()
+    if (opts?.view) qs.set('view', opts.view)
+    if (opts?.messageId) qs.set('messageId', opts.messageId)
     if (opts?.before !== undefined) qs.set('before', String(opts.before))
     if (opts?.limit !== undefined) qs.set('limit', String(opts.limit))
     const q = qs.toString()
@@ -1136,6 +1138,8 @@ export const api = {
   },
   /** All direct replies to a root message (i.e. messages whose quoted_message_id
    *  equals rootId). Used by the thread drawer. */
+  getThread: (conversationId: string, threadId: string) =>
+    http<{ status: string; round: number; members: Array<{ agentId: string; name: string; state: string; role: string }> }>(`/conversations/${encodeURIComponent(conversationId)}/threads/${encodeURIComponent(threadId)}`),
   getReplies: (conversationId: string, rootId: string) =>
     http<ApiMessage[]>(
       `/conversations/${encodeURIComponent(conversationId)}/messages/${encodeURIComponent(rootId)}/replies`,
@@ -1151,7 +1155,7 @@ export const api = {
     clientId?: string | null,
     taskId?: string,
   ) =>
-    http<{ id: string; sequence: number; taskId?: string }>(`/conversations/${encodeURIComponent(conversationId)}/messages`, {
+    http<{ id: string; sequence: number; taskId?: string; threadId?: string }>(`/conversations/${encodeURIComponent(conversationId)}/messages`, {
       method: 'POST',
       body: JSON.stringify({
         body,

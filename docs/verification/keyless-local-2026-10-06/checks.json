@@ -1,0 +1,114 @@
+{
+  "timestamp": "2026-10-06T09:03:13.138629+00:00",
+  "automatedTests": 34,
+  "passed": true,
+  "suites": [
+    {
+      "name": "unit",
+      "command": "node --import tsx --test server/src/__tests__/keyless-local-runtime.test.ts server/src/__tests__/schema-migrations.test.ts server/src/__tests__/agents-computer-codex-model-defaults.test.ts",
+      "tests": 28,
+      "passed": 28,
+      "failed": 0,
+      "cases": [
+        "unconfigured Codex Agent receives account defaults instead of inheriting host config",
+        "explicit Agent, computer and deployment model choices retain their precedence",
+        "missing, guessed or inconsistent catalogs do not impose unsupported models",
+        "old daemon preset is replaced by advertised Luna only for an unpinned fast model",
+        "absent key imports and rejects server inference before DB or network",
+        "empty key imports and rejects server inference before DB or network",
+        "whitespace key imports and rejects server inference before DB or network",
+        "explicit local-only with an old key imports and rejects server inference before DB or network",
+        "configured server API stays available when local-only is not selected",
+        "the frozen baseline SQL matches its immutable manifest checksum",
+        "the normalized membership migration matches its immutable manifest checksum",
+        "the workspace cleanup migration matches its immutable manifest checksum",
+        "the runtime assignment migration matches its immutable manifest checksum",
+        "the search trigram migration matches its immutable manifest checksum",
+        "the email messages company smtp id migration matches its immutable manifest checksum",
+        "the organizational governance migration matches its immutable manifest checksum",
+        "the governance idempotency migration matches its immutable manifest checksum",
+        "the governance invariant migration matches its immutable manifest checksum",
+        "the governance budget settlement migration matches its immutable manifest checksum",
+        "the governance membership-history migration matches its immutable manifest checksum",
+        "the engine defaults migration matches its immutable manifest checksum",
+        "the agent provider profile migration matches its immutable manifest checksum",
+        "the agent routing claims migration matches its immutable manifest checksum",
+        "task and routing migrations match checksums; the migrator accepts earlier prefixes",
+        "the migration owner accepts an exact prefix and reports its pending suffix",
+        "application startup rejects uninitialized, changed, and newer histories",
+        "startup compatibility verification is a read-only ledger query",
+        "a missing schema_migrations table becomes an actionable startup error"
+      ]
+    },
+    {
+      "name": "keyless-database",
+      "command": "node /tmp/run-cumora-workbench-tests.mjs server/src/__integration__/keyless-aida-routing.test.ts",
+      "tests": 5,
+      "passed": 5,
+      "failed": 0,
+      "cases": [
+        "all writers persist default, exact ID/name/alias, quote and explicit broadcast recipients",
+        "reconnect inbox filters before its limit, preserves explicit mute exceptions and system notices",
+        "Task ingress follows durable exact targets instead of mention prefixes",
+        "keyless local permits use account models, preserve request hash and reject server dispatch",
+        "keyless configuration and image errors disclose capability without credentials; memory still works"
+      ]
+    },
+    {
+      "name": "local-model-permit-regression",
+      "command": "node /tmp/run-cumora-workbench-tests.mjs --test-name-pattern='Codex login model permits' server/src/__integration__/channel-task-execution.test.ts",
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "cases": [
+        "Codex login model permits enforce admission, tools, receipt deduplication and live context"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "command": "npm run server:typecheck",
+      "passed": true
+    },
+    {
+      "command": "npm run typecheck",
+      "passed": true
+    },
+    {
+      "command": "npm run guard:big-brain",
+      "passed": true
+    },
+    {
+      "command": "npm run guard:llm-tracked",
+      "passed": true
+    },
+    {
+      "command": "npm run guard:engine-registry",
+      "passed": true
+    },
+    {
+      "command": "Biome lint: 26 affected TypeScript files + browser script",
+      "passed": true
+    },
+    {
+      "command": "Docker production build: frontend tsc + Vite + standalone image",
+      "passed": true
+    },
+    {
+      "command": "openspec validate enable-keyless-local-aida --strict",
+      "passed": true
+    },
+    {
+      "command": "git diff --check",
+      "passed": true
+    },
+    {
+      "command": "openspec validate --all --strict",
+      "passed": true,
+      "items": 13,
+      "failed": 0
+    }
+  ],
+  "databaseScope": "Isolated cumora_task_test database, no production TRUNCATE",
+  "schema": 22
+}

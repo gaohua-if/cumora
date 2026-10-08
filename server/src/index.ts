@@ -252,6 +252,8 @@ async function main() {
   // server-side classifier/cascade — every agent decides for itself via its
   // own LLM call whether to reply / react / dm / ack.
   startScheduler()
+  const { startThreadRecovery } = await import('./tasks/threads.js')
+  startThreadRecovery()
 
   // Start generic background scans for agents that explicitly have
   // the background.scan capability.

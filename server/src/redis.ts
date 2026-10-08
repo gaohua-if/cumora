@@ -106,6 +106,7 @@ export interface MessageNewEvent extends TenantTagged {
     deliveryRecipientId?: string
     /** When this message is a reply, the id of the quoted-original. */
     quotedMessageId?: string
+    threadId?: string
     /** Inlined summary so the renderer can draw the quote card on receipt
      *  without re-fetching. Matches the QuotedSummary shape used elsewhere. */
     quoted?: {

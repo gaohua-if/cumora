@@ -70,6 +70,16 @@ export function bootComputers() {
   if (wsBound) return
   wsBound = true
   ws.connect()
+  // A laptop may sleep through the offline→online WS event while the page
+  // remains mounted. Reconcile from the server when the user returns, and
+  // periodically while the tab is visible so a missed event cannot leave the
+  // computer marked offline indefinitely.
+  const refreshVisible = () => {
+    if (document.visibilityState === 'visible') void useComputers.getState().refresh()
+  }
+  window.addEventListener('focus', refreshVisible)
+  document.addEventListener('visibilitychange', refreshVisible)
+  window.setInterval(refreshVisible, 30_000)
   ws.on((e) => {
     if (e.type === 'hello') {
       // Reconnect — Redis pubsub doesn't replay, so backfill any status

@@ -41,3 +41,10 @@ The system SHALL reject writes based on stale configuration revisions and keep t
 #### Scenario: Two editors
 - **WHEN** two editors save changes from the same revision
 - **THEN** the first save succeeds and the second receives a conflict without replacing the first save
+
+### Requirement: Visible local runtime capability
+The system SHALL display server inference availability and explain that local Agents require an online paired computer and its own model login. The configuration view SHALL identify server-only capabilities that are unavailable without a key.
+
+#### Scenario: Keyless workspace configuration
+- **WHEN** a user opens desktop configuration on a keyless server
+- **THEN** the view identifies local mode and the local computer login requirement without exposing credentials

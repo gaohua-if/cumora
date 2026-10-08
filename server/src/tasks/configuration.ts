@@ -22,6 +22,7 @@ import {
 } from '../../../shared/configuration.js'
 import { TaskError, hashContent, canonicalJson } from './contracts.js'
 import type { TaskService, TaskPrincipal, BindingRecord } from './service.js'
+import { modelCapabilities } from '../model-availability.js'
 
 function fail(code: string, status = 400): never {
   throw new TaskError(code, status)
@@ -123,6 +124,7 @@ export class ConfigurationService {
         )
       ).rows
       return {
+        runtime: modelCapabilities(),
         revision: settings.revision,
         language: settings.language,
         definitions,

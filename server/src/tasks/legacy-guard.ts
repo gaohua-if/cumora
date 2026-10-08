@@ -20,7 +20,8 @@ export async function taskMessageIds(ids:string[]):Promise<Set<string>> {
   const table=(await pool.query(`SELECT to_regclass('task_message_links') AS tasks`)).rows[0].tasks
   if(!table)return new Set()
   const linked=await pool.query<{message_id:string}>(`SELECT l.message_id FROM messages m JOIN task_message_links l
-    ON l.company_id=m.company_id AND l.message_id=m.id WHERE m.id=ANY($1::text[])`,[[...new Set(ids)]])
+    ON l.company_id=m.company_id AND l.message_id=m.id JOIN channel_tasks t ON t.id=l.task_id AND t.company_id=l.company_id
+    WHERE m.id=ANY($1::text[]) AND t.execution_kind='TASK'`,[[...new Set(ids)]])
   return new Set(linked.rows.map(row=>row.message_id))
 }
 

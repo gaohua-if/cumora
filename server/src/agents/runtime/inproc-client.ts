@@ -17,6 +17,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import type { PoolClient } from 'pg'
 import { pool } from '../../db/pool.js'
+import { threadScope } from '../../tasks/thread-scope.js'
 import { agentTaskMode, requireLegacyAgent,withoutTaskMessages } from '../../tasks/legacy-guard.js'
 import { CH_MESSAGE_NEW, CH_TYPING, publish, redis } from '../../redis.js'
 import { enqueueBroadcast, nudgeRealtimeOutbox } from '../../realtime-outbox.js'
@@ -140,6 +141,18 @@ export class InProcRuntimeClient implements AgentRuntimeClient {
 
   async loadInbox(agentId: string): Promise<InboxRow[]> {
     await requireLegacyAgent(agentId)
+    const scope = threadScope.getStore()
+    if (scope) {
+      const { rows } = await pool.query<InboxRow>(`SELECT m.id,m.conversation_id,m.company_id,c.title AS conversation_title,c.kind AS conversation_kind,c.topic AS conversation_topic,
+        c.project_id,pr.name AS project_name,m.author_id,p.kind AS author_kind,p.name AS author_name,m.body,m.kind,m.sequence,m.created_at,m.attachment,m.quoted_message_id
+        FROM messages m JOIN conversations c ON c.id=m.conversation_id AND c.company_id=m.company_id
+        LEFT JOIN participants p ON p.id=m.author_id AND p.company_id=m.company_id LEFT JOIN projects pr ON pr.id=c.project_id
+        LEFT JOIN thread_reads r ON r.thread_id=m.thread_id AND r.agent_id=$1
+        WHERE m.company_id=$2 AND m.thread_id=$3 AND $1=ANY(m.work_recipient_ids) AND m.sequence>COALESCE(r.sequence,0)
+        ORDER BY m.sequence LIMIT 200`, [agentId, scope.companyId, scope.threadId])
+      await refreshAttachmentUrls(rows)
+      return rows
+    }
     // Resolve membership through the normalized participant-led index, then
     // pull each conversation's unread tail with the message index. This avoids
     // both the old JSONB seq-scan and its dedicated enable_seqscan=off session.
@@ -205,15 +218,17 @@ export class InProcRuntimeClient implements AgentRuntimeClient {
             WHERE mm.conversation_id = co.id
               AND (co.current_member OR mm.delivery_recipient_id = $1)
               AND (mm.author_id <> $1 OR mm.delivery_recipient_id = $1)
+              AND (mm.work_recipient_ids IS NULL OR $1=ANY(mm.work_recipient_ids))
+              AND mm.thread_id IS NULL
               AND ROW(mm.created_at, mm.id) > ROW(co.lr_at, co.lr_id)
               AND (
                 mm.delivery_recipient_id = $1
                 OR NOT co.muted
                 OR co.conversation_kind = 'direct'
-                OR EXISTS (
-                  SELECT 1 FROM regexp_matches(mm.body, '@([[:alnum:]_-]+)', 'g') mention
-                   WHERE LOWER(mention[1]) = LOWER($1)
-                )
+                OR EXISTS (SELECT 1 FROM participants target
+                  LEFT JOIN channel_agent_bindings b ON b.company_id=co.company_id AND b.conversation_id=co.id AND b.agent_id=target.id AND b.status='ACTIVE'
+                  WHERE target.id=$1 AND target.company_id=co.company_id AND (
+                    cumora_exact_mention(mm.body,target.id) OR cumora_exact_mention(mm.body,target.name) OR cumora_exact_mention(mm.body,b.alias)))
                 OR EXISTS (
                   SELECT 1 FROM messages quoted
                    WHERE quoted.id = mm.quoted_message_id

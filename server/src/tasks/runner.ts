@@ -3,11 +3,12 @@ import { GovernanceBudgetError } from '../governance/runtime-budget.js'
 import { pool } from '../db/pool.js'
 import { randomUUID } from 'node:crypto'
 import { TaskError } from './contracts.js'
-import { TaskService } from './service.js'
-import { TaskExecutionService, type Claim, type ResolvedTask } from './execution.js'
+import type { TaskService } from './service.js'
+import { TaskExecutionService, type ResolvedTask } from './execution.js'
 import { TaskPlanService } from './plans.js'
 import { getTrackedLlmClient } from '../agents/llm-ledger.js'
 import { enforceModelPolicy, realTaskModel } from '../agents/model-policy.js'
+import { env } from '../env.js'
 
 const tools = [{ type: 'function' as const, name: 'artifact_create', description: 'Create an immutable task artifact. Does not publish it.', strict: true,
   parameters: { type: 'object', additionalProperties: false, properties: { content: { type: 'string' }, mediaType: { type: 'string', enum: ['text/plain', 'text/markdown', 'text/x-diff', 'application/json'] } }, required: ['content', 'mediaType'] } }]
@@ -106,6 +107,7 @@ export async function runCloudTask(tasks: TaskService, companyId: string, agentI
 }
 
 export async function drainCloudTasks(tasks: TaskService): Promise<void> {
+  if (env.LOCAL_ONLY) return
   const pending = await tasks.pool.query<{ company_id: string; agent_id: string }>(`SELECT DISTINCT d.company_id,d.agent_id FROM task_dispatches d
     JOIN task_execution_contexts x ON x.id=d.context_id JOIN task_workspace_settings s ON s.company_id=d.company_id
     LEFT JOIN computers c ON c.id=x.computer_id AND c.company_id=d.company_id

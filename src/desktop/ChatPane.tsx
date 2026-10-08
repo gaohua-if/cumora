@@ -1,3 +1,4 @@
+import { isChannelMessage } from '@/lib/replyCount'
 import { TaskContextPanel } from '@/components/TaskContextPanel'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso'
@@ -654,14 +655,12 @@ export function Composer({
 
   // Reply state — read the quoted message id for THIS convo. The store
   // keeps a per-convo map so flipping rooms preserves each room's draft.
-  // In thread mode the quoted id is fixed to threadRootId (every reply in the
-  // drawer roots at the thread head); the global per-convo replyingTo is ignored.
-  const globalReplyingToId = useApp((s) => s.replyingTo[convoId])
+  // Thread quotes are scoped independently; quoting a member preserves the same root.
+  const globalReplyingToId = useApp((s) => s.replyingTo[scopeKey])
   const setReplyingTo = useApp((s) => s.setReplyingTo)
-  const replyingToId = isThread ? threadRootId : globalReplyingToId
-  // The "Replying to X" pill inside the composer is for the global compose path.
-  // In thread mode the parent drawer renders its own header, so we suppress it here.
-  const showReplyingPill = !isThread && Boolean(replyingToId)
+  const replyingToId = globalReplyingToId ?? (isThread ? threadRootId : undefined)
+  // Show a quote pill for a selected member reply; the default thread root is in the drawer.
+  const showReplyingPill = Boolean(replyingToId) && (!isThread || replyingToId !== threadRootId)
   const replyingToMsg = useMessages((s) =>
     replyingToId ? (s.byConvo[convoId] ?? []).find((m) => m.id === replyingToId) : undefined,
   )
@@ -912,7 +911,7 @@ export function Composer({
     sendUserMessage(convoId, v, attachment, replyingToId ?? null)
     clearComposerDraft()
     editorRef.current?.setValue('')
-    if (!isThread) setReplyingTo(convoId, null)
+    setReplyingTo(scopeKey, null)
     editorRef.current?.focus()
   }
 
@@ -951,7 +950,7 @@ export function Composer({
     // In thread mode the root is implicit and uncancellable, so skip this.
     if (!isThread && e.key === 'Escape' && replyingToId && draft.trim() === '') {
       e.preventDefault()
-      setReplyingTo(convoId, null)
+      setReplyingTo(scopeKey, null)
     }
     // @ keystroke fallback. Typing `@` immediately after a mention chip
     // (or any other contenteditable=false atom) can hit a browser
@@ -1086,7 +1085,7 @@ export function Composer({
             </div>
             <button
               type="button"
-              onClick={() => setReplyingTo(convoId, null)}
+              onClick={() => setReplyingTo(scopeKey, null)}
               className="w-6 h-6 rounded-md grid place-items-center text-ink-500 hover:bg-cloud hover:text-ink-900 transition shrink-0 self-center"
               aria-label={t('chat.cancelReply')}
               title={t('chat.cancelReplyEsc')}
@@ -1766,7 +1765,7 @@ export function ChatPane() {
   const retryLoad = useMessages((s) => s.retryLoad)
   // Compose with memo so the rendered array ref stays stable when inputs do
   const list = useMemo(
-    () => messagesFor({ byConvo: byConvo ? { [convoId!]: byConvo } : {}, streaming } as MessagesState, convoId),
+    () => messagesFor({ byConvo: byConvo ? { [convoId!]: byConvo } : {}, streaming } as MessagesState, convoId).filter(isChannelMessage),
     [byConvo, streaming, convoId],
   )
   const conversations = useConversations((s) => s.list)
@@ -1838,6 +1837,12 @@ export function ChatPane() {
   const clearPendingJump = useApp((s) => s.clearPendingJump)
   useEffect(() => {
     if (!pendingJumpId) return
+    const target = byConvo?.find(m => m.id === pendingJumpId)
+    if (target?.threadId && target.threadId !== target.id && convoId) {
+      useApp.getState().openThreadView(convoId, target.threadId)
+      clearPendingJump()
+      return
+    }
     const index = list.findIndex((m) => m.id === pendingJumpId)
     if (index >= 0) {
       virtuosoRef.current?.scrollToIndex({ index, align: 'center', behavior: 'smooth' })
@@ -1858,7 +1863,7 @@ export function ChatPane() {
     }
     // Clear after we've handled it so a repeat click on the same id re-fires.
     clearPendingJump()
-  }, [pendingJumpId, list, clearPendingJump])
+  }, [pendingJumpId, list, byConvo, convoId, clearPendingJump])
   // Auto-focus the search input when the bar opens.
   useEffect(() => {
     if (searchOpen) {

@@ -1,0 +1,133 @@
+{
+  "items": [
+    {
+      "id": "agent-definitions-and-bindings",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 9
+    },
+    {
+      "id": "align-channel-thread-slack-behavior",
+      "type": "change",
+      "valid": true,
+      "issues": [],
+      "durationMs": 37
+    },
+    {
+      "id": "channel-agent-knowledge",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 2
+    },
+    {
+      "id": "channel-task-routing",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 1
+    },
+    {
+      "id": "configuration-resolution",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 2
+    },
+    {
+      "id": "configuration-workbench",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 1
+    },
+    {
+      "id": "enable-keyless-local-aida",
+      "type": "change",
+      "valid": true,
+      "issues": [],
+      "durationMs": 45
+    },
+    {
+      "id": "enable-thread-scoped-agent-coordination",
+      "type": "change",
+      "valid": true,
+      "issues": [],
+      "durationMs": 31
+    },
+    {
+      "id": "task-access-control",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 1
+    },
+    {
+      "id": "task-artifact-delivery",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 0
+    },
+    {
+      "id": "task-context-isolation",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 0
+    },
+    {
+      "id": "task-governance-compatibility",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 0
+    },
+    {
+      "id": "task-plan-delegation",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 1
+    },
+    {
+      "id": "task-runtime-dispatch",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 1
+    },
+    {
+      "id": "task-workspace-migration",
+      "type": "spec",
+      "valid": true,
+      "issues": [],
+      "durationMs": 0
+    }
+  ],
+  "summary": {
+    "totals": {
+      "items": 15,
+      "passed": 15,
+      "failed": 0
+    },
+    "byType": {
+      "change": {
+        "items": 3,
+        "passed": 3,
+        "failed": 0
+      },
+      "spec": {
+        "items": 12,
+        "passed": 12,
+        "failed": 0
+      }
+    }
+  },
+  "version": "1.0",
+  "root": {
+    "path": "/home/gh/workspace/百工/cumora",
+    "source": "nearest"
+  }
+}

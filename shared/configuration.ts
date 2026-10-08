@@ -102,6 +102,7 @@ export interface WorkbenchAgent {
   isAida: boolean
 }
 export interface WorkbenchData {
+  runtime?: { mode: 'local-only' | 'server-api'; serverInference: boolean; embeddings: boolean; generatedImages: boolean; routing: 'aida' }
   revision: number
   language: Language
   agents: WorkbenchAgent[]

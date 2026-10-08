@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import type { PoolClient } from 'pg'
 import { TaskError, canonicalJson, hashContent } from './contracts.js'
-import { TaskService, type TaskPrincipal, type TaskRecord } from './service.js'
+import type { TaskService, TaskPrincipal, TaskRecord } from './service.js'
 
 export class TaskIngressService {
   constructor(readonly tasks: TaskService) {}
@@ -46,8 +46,9 @@ export class TaskIngressService {
       await client.query(`UPDATE channel_tasks SET input_revision=$3,version=version+1 WHERE company_id=$1 AND id=$2`, [principal.companyId, taskId, task.input_revision])
       return taskId
     }
-    const named = await client.query<{ id: string; alias: string; agent_id: string }>(`SELECT id,alias,agent_id FROM channel_agent_bindings WHERE company_id=$1 AND conversation_id=$2 AND status='ACTIVE'`, [principal.companyId, channelId])
-    const mentions = named.rows.filter((binding) => message.body.includes(`@${binding.alias}`) || message.body.includes(`@${binding.agent_id}`))
+    const named = await client.query<{ id: string; alias: string; agent_id: string }>(`SELECT id,alias,agent_id FROM channel_agent_bindings WHERE company_id=$1 AND conversation_id=$2 AND status='ACTIVE'
+      AND agent_id=ANY($3::text[])`, [principal.companyId, channelId, message.work_recipient_ids ?? []])
+    const mentions = named.rows
     if (mentions.length > 1) throw new TaskError('SINGLE_BINDING_REQUIRED')
     const task = await this.tasks.create(principal, { channelId, objective: message.body, ingressKey: `message:${message.id}`, bindingId: mentions[0]?.id,
       grantIds: [], messageId }, client)

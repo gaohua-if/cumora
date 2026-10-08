@@ -447,6 +447,7 @@ export async function classifyAgendaActionable(args: {
    *  normally configure AGENDA_CLASSIFIER_MODEL instead. */
   model?: string
 }): Promise<AgendaVerdict> {
+  if (env.LOCAL_ONLY) return { actionable: false, focus: '', reason: 'local-only mode' }
   const { persona, companyId, agenda } = args
   if (agenda.cards.length === 0 && agenda.events.length === 0 && agenda.stalls.length === 0) {
     return { actionable: false, focus: '', reason: 'empty agenda' }

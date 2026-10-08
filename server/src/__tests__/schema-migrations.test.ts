@@ -31,6 +31,9 @@ const { taskExecutorFencesChecksum } = await import('../db/migrations/0016-task-
 const { taskLifecycleChecksum } = await import('../db/migrations/0018-task-lifecycle.js')
 const { taskDefinitionSnapshotsChecksum } = await import('../db/migrations/0019-task-definition-snapshots.js')
 const { configurationWorkbenchChecksum } = await import('../db/migrations/0020-configuration-workbench.js')
+const { agentQuoteContextChecksum } = await import('../db/migrations/0022-agent-quote-context.js')
+const { threadAgentCoordinationChecksum } = await import('../db/migrations/0023-thread-agent-coordination.js')
+const { aidaMessageRoutingChecksum } = await import('../db/migrations/0021-aida-message-routing.js')
 const { taskSourceAndGovernanceLinksChecksum } = await import('../db/migrations/0017-task-source-and-governance-links.js')
 const { verifySchemaCompatibility } = await import('../db/schema-version.js')
 type SchemaVersionQueryable = import('../db/schema-version.js').SchemaVersionQueryable
@@ -93,14 +96,20 @@ test('the agent routing claims migration matches its immutable manifest checksum
   assert.equal(agentRoutingClaimsChecksum(), SCHEMA_MIGRATIONS[13].checksum)
 })
 
-test('channel task migration matches its checksum and preparation accepts schema 14', () => {
+test('task and routing migrations match checksums; the migrator accepts earlier prefixes', () => {
   assert.equal(channelTaskExecutionChecksum(), SCHEMA_MIGRATIONS[14].checksum)
   assert.equal(taskExecutorFencesChecksum(), SCHEMA_MIGRATIONS[15].checksum)
   assert.equal(taskSourceAndGovernanceLinksChecksum(), SCHEMA_MIGRATIONS[16].checksum)
   assert.equal(taskLifecycleChecksum(), SCHEMA_MIGRATIONS[17].checksum)
   assert.equal(taskDefinitionSnapshotsChecksum(), SCHEMA_MIGRATIONS[18].checksum)
   assert.equal(configurationWorkbenchChecksum(), SCHEMA_MIGRATIONS[19].checksum)
-  assert.equal(validateMigrationHistory(current().slice(0, 14)).currentVersion, 14)
+  assert.equal(aidaMessageRoutingChecksum(), SCHEMA_MIGRATIONS[20].checksum)
+  assert.equal(agentQuoteContextChecksum(), SCHEMA_MIGRATIONS[21].checksum)
+  assert.equal(threadAgentCoordinationChecksum(), SCHEMA_MIGRATIONS[22].checksum)
+  assert.throws(() => validateMigrationHistory(current().slice(0, 22)), (error) => error instanceof MigrationHistoryError)
+  assert.throws(() => validateMigrationHistory(current().slice(0, 21)), (error) => error instanceof MigrationHistoryError)
+  assert.equal(validateMigrationHistory(current().slice(0, 14), { allowPending: true }).currentVersion, 14)
+  assert.throws(() => validateMigrationHistory(current().slice(0, 20)), (error) => error instanceof MigrationHistoryError)
 })
 
 test('the migration owner accepts an exact prefix and reports its pending suffix', () => {

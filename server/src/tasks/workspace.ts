@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import type { PoolClient } from 'pg'
 import { TaskError, requireLiveGrant } from './contracts.js'
-import { TaskService, type TaskPrincipal } from './service.js'
+import type { TaskService, TaskPrincipal } from './service.js'
+import { env } from '../env.js'
 
 export class TaskWorkspaceService {
   constructor(readonly tasks: TaskService) {}
@@ -91,6 +92,13 @@ export class TaskWorkspaceService {
       (c.id IS NULL OR c.revoked_at IS NOT NULL OR (c.kind='cloud' AND p.engine IS NOT NULL AND p.engine<>'managed') OR (c.kind<>'cloud' AND NOT EXISTS(SELECT 1 FROM task_runtime_admissions a WHERE a.company_id=p.company_id AND a.computer_id=p.computer_id AND a.engine=p.engine AND a.revoked_at IS NULL)))`, [companyId])
     const unassigned=await client.query(`SELECT 1 FROM participants WHERE company_id=$1 AND kind='agent' AND departed_at IS NULL AND computer_id IS NULL AND engine IS NOT NULL AND engine<>'managed' LIMIT 1`,[companyId])
     if (local.rowCount || unassigned.rowCount) failures.push('RUNTIME_CAPABILITY_UNQUALIFIED')
+    if (env.LOCAL_ONLY) {
+      const server = await client.query(`SELECT 1 FROM participants p LEFT JOIN computers c ON c.id=p.computer_id AND c.company_id=p.company_id
+        LEFT JOIN task_runtime_admissions a ON a.company_id=p.company_id AND a.computer_id=p.computer_id AND a.engine=p.engine AND a.revoked_at IS NULL
+        WHERE p.company_id=$1 AND p.kind='agent' AND p.departed_at IS NULL AND
+          (c.id IS NULL OR c.kind='cloud' OR a.capabilities->>'modelProvider' IS DISTINCT FROM 'codex-login') LIMIT 1`, [companyId])
+      if (server.rowCount) failures.push('SERVER_MODEL_UNAVAILABLE')
+    }
     return failures
   }
 
